@@ -30,18 +30,16 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
 ## 依存関係
 
 ### コア依存関係
-
 - **State Management**: `zustand` ^4 - 軽量で直感的な状態管理
 - **Backend**: `firebase` ^11 - モジュラーv9+ API使用
 - **3D Rendering**: `expo-three` + `expo-gl` + `expo-asset` - Expo管理環境での3Dレンダリング
 - **Types**: `@types/three` - Three.js型定義
 
 ### 設定状況
-
 - ✅ **Zustand**: インストール済み（設定準備完了）
-- ✅ **Firebase**: インストール済み（`src/lib/firebase.ts`にプレースホルダー作成）
+- ✅ **Firebase**: インストール・初期化済み（環境変数設定で有効化）
 - ✅ **Three.js**: インストール済み（`src/lib/three.ts`にプレースホルダー作成）
-- 🔄 **設定**: 将来のバージョンで実装予定
+- 🔄 **設定**: Firebase完了、Three.js設定は将来実装予定
 
 ## セットアップと実行
 
@@ -59,6 +57,28 @@ npm install
 # または
 pnpm install
 ```
+
+### 環境変数の設定
+
+Firebase機能を使用するには、プロジェクトルートに `.env` ファイルを作成してください：
+
+```bash
+# .env
+FIREBASE_API_KEY=your_api_key_here
+FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_APP_ID=your_app_id
+```
+
+**セットアップ手順**:
+1. Firebase Console（https://console.firebase.google.com）でプロジェクトを作成
+2. プロジェクト設定 > 全般タブから設定値を取得
+3. 上記の値を `.env` ファイルに設定
+
+**注意**: 
+- `.env` ファイルは `.gitignore` に含まれています
+- 現在は設定なしでもアプリは動作します（Firebase機能は無効）
+- Expo環境変数は `process.env.*` でアクセス可能
 
 ### 開発サーバーの起動
 
@@ -106,8 +126,10 @@ src/
 │       └── Screen.tsx           # 安全領域付きスクリーンラッパー
 ├── lib/
 │   ├── index.ts                 # ユーティリティ関数
-│   ├── firebase.ts              # Firebase設定（プレースホルダー）
+│   ├── firebase.ts              # Firebase v11初期化・ヘルパー
 │   └── three.ts                 # Three.js設定（プレースホルダー）
+├── repositories/
+│   └── paths.ts                 # Firestoreパスビルダー
 └── theme/
     ├── colors.ts                # カラーテーマ定義
     └── spacing.ts               # スペーシング定義

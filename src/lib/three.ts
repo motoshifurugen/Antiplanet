@@ -26,19 +26,19 @@ export interface CivilizationMarker {
 }
 
 // Placeholder exports for future implementation
-export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene | null => {
+export const createPlanetScene = (_gl: ExpoWebGLRenderingContext): PlanetScene | null => {
   // Scene initialization will be implemented here
   return null;
 };
 
 export const addCivilizationToScene = (
-  scene: PlanetScene,
-  civilization: CivilizationMarker
+  _scene: PlanetScene,
+  _civilization: CivilizationMarker
 ): void => {
   // Civilization marker rendering will be implemented here
 };
 
-export const animatePlanet = (scene: PlanetScene): void => {
+export const animatePlanet = (_scene: PlanetScene): void => {
   // Planet rotation and animation will be implemented here
 };
 
