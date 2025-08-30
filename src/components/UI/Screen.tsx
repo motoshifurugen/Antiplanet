@@ -18,9 +18,7 @@ export const Screen: React.FC<ScreenProps> = ({
 }) => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor }, style]}>
-      <View style={[styles.content, padding && styles.withPadding]}>
-        {children}
-      </View>
+      <View style={[styles.content, padding && styles.withPadding]}>{children}</View>
     </SafeAreaView>
   );
 };

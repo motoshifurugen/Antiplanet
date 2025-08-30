@@ -6,7 +6,10 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { RootStackParamList } from '../app/navigation/RootNavigator';
 
-type CivilizationsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Civilizations'>;
+type CivilizationsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Civilizations'
+>;
 
 interface CivilizationsScreenProps {
   navigation: CivilizationsScreenNavigationProp;
@@ -19,13 +22,15 @@ const mockCivilizations = [
   { id: '3', name: 'Crystal Valley', population: '5,000', status: 'Developing' },
 ];
 
-export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({ navigation: _navigation }) => {
+export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
+  navigation: _navigation,
+}) => {
   const handleAddCivilization = () => {
     // No-op for now as specified in requirements
     console.log('Add Civilization pressed');
   };
 
-  const renderCivilization = ({ item }: { item: typeof mockCivilizations[0] }) => (
+  const renderCivilization = ({ item }: { item: (typeof mockCivilizations)[0] }) => (
     <View style={styles.civilizationCard}>
       <Text style={styles.civilizationName}>{item.name}</Text>
       <Text style={styles.civilizationDetail}>Population: {item.population}</Text>
@@ -38,18 +43,15 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({ naviga
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Civilizations</Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={handleAddCivilization}
-          >
+          <TouchableOpacity style={styles.addButton} onPress={handleAddCivilization}>
             <Text style={styles.addButtonText}>Add Civilization</Text>
           </TouchableOpacity>
         </View>
-        
+
         <FlatList
           data={mockCivilizations}
           renderItem={renderCivilization}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
         />

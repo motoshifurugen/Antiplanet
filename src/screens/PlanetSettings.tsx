@@ -6,13 +6,18 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { RootStackParamList } from '../app/navigation/RootNavigator';
 
-type PlanetSettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PlanetSettings'>;
+type PlanetSettingsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'PlanetSettings'
+>;
 
 interface PlanetSettingsScreenProps {
   navigation: PlanetSettingsScreenNavigationProp;
 }
 
-export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({ navigation: _navigation }) => {
+export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
+  navigation: _navigation,
+}) => {
   const [goalTitle, setGoalTitle] = useState('');
   const [deadline, setDeadline] = useState('');
 
@@ -26,7 +31,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({ navi
       <View style={styles.container}>
         <Text style={styles.title}>Planet Settings</Text>
         <Text style={styles.subtitle}>Configure your planet's goals and timeline</Text>
-        
+
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Goal Title</Text>
@@ -38,7 +43,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({ navi
               placeholderTextColor={colors.placeholder}
             />
           </View>
-          
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Deadline (YYYY-MM-DD)</Text>
             <TextInput
@@ -50,11 +55,8 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({ navi
               keyboardType="numeric"
             />
           </View>
-          
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSave}
-          >
+
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Save Settings</Text>
           </TouchableOpacity>
         </View>

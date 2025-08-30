@@ -20,7 +20,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Text style={styles.subtitle}>
           Welcome to Antiplanet - A civilization lifecycle simulator
         </Text>
-        
+
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.button}
@@ -28,7 +28,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           >
             <Text style={styles.buttonText}>View Civilizations</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.button}
             onPress={() => navigation.navigate('PlanetSettings')}
