@@ -12,11 +12,11 @@ export const getPlanetGoal = async (uid: string): Promise<PlanetGoal | null> => 
   try {
     const docRef = doc(db, planetGoalDoc(uid));
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       return docSnap.data() as PlanetGoal;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Failed to get planet goal:', error);
@@ -43,7 +43,10 @@ export const setPlanetGoal = async (uid: string, goal: PlanetGoal): Promise<void
 /**
  * Update planet goal for a user
  */
-export const updatePlanetGoal = async (uid: string, updates: Partial<PlanetGoal>): Promise<void> => {
+export const updatePlanetGoal = async (
+  uid: string,
+  updates: Partial<PlanetGoal>
+): Promise<void> => {
   try {
     const docRef = doc(db, planetGoalDoc(uid));
     await updateDoc(docRef, {

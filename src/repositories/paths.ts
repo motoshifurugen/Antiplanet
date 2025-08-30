@@ -1,4 +1,4 @@
-git // Firestore collection and document path builders
+// Firestore collection and document path builders
 // Centralized path management for consistent data structure
 
 /**

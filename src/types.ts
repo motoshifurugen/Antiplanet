@@ -42,5 +42,7 @@ export type ISODateString = string;
 
 // Request/Response types for repositories
 export type CreateCivilizationRequest = Omit<Civilization, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateCivilizationRequest = Partial<Pick<Civilization, 'name' | 'purpose' | 'deadline' | 'state'>>;
+export type UpdateCivilizationRequest = Partial<
+  Pick<Civilization, 'name' | 'purpose' | 'deadline' | 'state'>
+>;
 export type CreateProgressLogRequest = Omit<ProgressLog, 'id' | 'createdAt'>;

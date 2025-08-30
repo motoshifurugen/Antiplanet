@@ -12,10 +12,16 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
 - **Civilizations**: 文明一覧の表示（モックデータ）
 - **Planet Settings**: 惑星目標と期限の設定フォーム
 
+### 現在の追加機能
+
+- **文明状態システム**: 最終プログレスからの経過時間に基づく決定論的な状態評価
+  - `uninitialized` → `developing` (0-6日) → `decaying` (7-20日) → `ocean` (21日+)
+  - オンデマンド評価（タイマー不使用）
+  - 重要な状態遷移のみ永続化
+
 ### 将来の追加予定機能
 
 - 3Dプラネットビュー（expo-three）
-- Firebase統合（データ永続化）
 - リアルタイム文明シミュレーション
 - より詳細な文明管理機能
 
@@ -38,8 +44,9 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
 ### 設定状況
 - ✅ **Zustand**: インストール済み（設定準備完了）
 - ✅ **Firebase**: インストール・初期化済み（環境変数設定で有効化）
+- ✅ **State Machine**: 文明状態の決定論的評価システム実装済み
 - ✅ **Three.js**: インストール済み（`src/lib/three.ts`にプレースホルダー作成）
-- 🔄 **設定**: Firebase完了、Three.js設定は将来実装予定
+- 🔄 **設定**: Firebase・State Machine完了、Three.js設定は将来実装予定
 
 ## セットアップと実行
 
@@ -125,8 +132,11 @@ src/
 │   └── UI/
 │       └── Screen.tsx           # 安全領域付きスクリーンラッパー
 ├── lib/
+│   ├── __tests__/
+│   │   └── civilizationStateMachine.test.ts # セルフテスト（開発環境のみ）
 │   ├── index.ts                 # ユーティリティ関数
 │   ├── firebase.ts              # Firebase v11初期化・ヘルパー
+│   ├── civilizationStateMachine.ts # 文明状態の決定論的評価
 │   └── three.ts                 # Three.js設定（プレースホルダー）
 ├── repositories/
 │   ├── index.ts                 # リポジトリエクスポート

@@ -1,5 +1,4 @@
-// Placeholder for utilities
-// Future: Firebase, Three.js, and other utilities will be added here
+// Utilities and core library functions
 
 export const utils = {
   formatDate: (date: Date): string => {
@@ -9,3 +8,6 @@ export const utils = {
     return Math.random().toString(36).substr(2, 9);
   },
 };
+
+// Re-export civilization state machine
+export * from './civilizationStateMachine';

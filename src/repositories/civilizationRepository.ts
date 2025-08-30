@@ -1,6 +1,16 @@
 // Civilization repository - handles CRUD operations for civilizations
 
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+} from 'firebase/firestore';
 import { db, serverTimestamp } from '../lib/firebase';
 import { civilizationsCol, civilizationDoc } from './paths';
 import { Civilization, CreateCivilizationRequest, UpdateCivilizationRequest } from '../types';
@@ -13,7 +23,7 @@ export const getCivilizations = async (uid: string): Promise<Civilization[]> => 
     const colRef = collection(db, civilizationsCol(uid));
     const q = query(colRef, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
-    
+
     return querySnapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data(),
@@ -31,14 +41,14 @@ export const getCivilization = async (uid: string, civId: string): Promise<Civil
   try {
     const docRef = doc(db, civilizationDoc(uid, civId));
     const docSnap = await getDoc(docRef);
-    
+
     if (docSnap.exists()) {
       return {
         id: docSnap.id,
         ...docSnap.data(),
       } as Civilization;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Failed to get civilization:', error);
@@ -49,18 +59,21 @@ export const getCivilization = async (uid: string, civId: string): Promise<Civil
 /**
  * Create a new civilization
  */
-export const createCivilization = async (uid: string, data: CreateCivilizationRequest): Promise<string> => {
+export const createCivilization = async (
+  uid: string,
+  data: CreateCivilizationRequest
+): Promise<string> => {
   try {
     const colRef = collection(db, civilizationsCol(uid));
     const now = serverTimestamp();
-    
+
     const docRef = await addDoc(colRef, {
       ...data,
       state: data.state || 'uninitialized',
       createdAt: now,
       updatedAt: now,
     });
-    
+
     return docRef.id;
   } catch (error) {
     console.error('Failed to create civilization:', error);
@@ -71,7 +84,11 @@ export const createCivilization = async (uid: string, data: CreateCivilizationRe
 /**
  * Update an existing civilization
  */
-export const updateCivilization = async (uid: string, civId: string, updates: UpdateCivilizationRequest): Promise<void> => {
+export const updateCivilization = async (
+  uid: string,
+  civId: string,
+  updates: UpdateCivilizationRequest
+): Promise<void> => {
   try {
     const docRef = doc(db, civilizationDoc(uid, civId));
     await updateDoc(docRef, {
