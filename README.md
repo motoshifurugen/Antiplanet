@@ -129,10 +129,15 @@ src/
 │   ├── firebase.ts              # Firebase v11初期化・ヘルパー
 │   └── three.ts                 # Three.js設定（プレースホルダー）
 ├── repositories/
-│   └── paths.ts                 # Firestoreパスビルダー
-└── theme/
-    ├── colors.ts                # カラーテーマ定義
-    └── spacing.ts               # スペーシング定義
+│   ├── index.ts                 # リポジトリエクスポート
+│   ├── paths.ts                 # Firestoreパスビルダー
+│   ├── planetGoalRepository.ts  # 惑星目標CRUD
+│   ├── civilizationRepository.ts # 文明CRUD
+│   └── progressLogRepository.ts # プログレスログCRUD
+├── theme/
+│   ├── colors.ts                # カラーテーマ定義
+│   └── spacing.ts               # スペーシング定義
+└── types.ts                     # コア型定義
 ```
 
 ## 開発ガイドライン

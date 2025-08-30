@@ -3,7 +3,16 @@
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore, FieldValue, serverTimestamp as firestoreServerTimestamp, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import {
+  getFirestore,
+  Firestore,
+  FieldValue,
+  serverTimestamp as firestoreServerTimestamp,
+  doc,
+  setDoc,
+  getDoc,
+  deleteDoc,
+} from 'firebase/firestore';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -41,7 +50,7 @@ export const getServerTime = async (): Promise<Date> => {
   try {
     const tempDocRef = doc(db, 'temp', 'servertime');
     await setDoc(tempDocRef, { timestamp: serverTimestamp() });
-    
+
     const docSnap = await getDoc(tempDocRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
@@ -49,7 +58,7 @@ export const getServerTime = async (): Promise<Date> => {
       await deleteDoc(tempDocRef);
       return data.timestamp.toDate();
     }
-    
+
     // Fallback to local time if something goes wrong
     return new Date();
   } catch (error) {
