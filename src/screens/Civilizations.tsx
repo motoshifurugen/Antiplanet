@@ -109,10 +109,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       }
       deriveCivStates();
     } catch (error) {
-      showToast(
-        `Failed to ${editingCivilization ? 'update' : 'create'} civilization`,
-        'error'
-      );
+      showToast(`Failed to ${editingCivilization ? 'update' : 'create'} civilization`, 'error');
       throw error; // Re-throw to prevent modal from closing
     } finally {
       setModalLoading(false);
@@ -159,28 +156,18 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
         </View>
       </View>
 
-      <Text style={styles.civilizationDetail}>
-        Deadline: {formatDate(item.deadline)}
-      </Text>
+      <Text style={styles.civilizationDetail}>Deadline: {formatDate(item.deadline)}</Text>
       <Text style={styles.civilizationDetail}>
         Last Progress: {formatRelativeTime(item.lastProgressAt)}
       </Text>
-      {item.purpose && (
-        <Text style={styles.civilizationPurpose}>{item.purpose}</Text>
-      )}
+      {item.purpose && <Text style={styles.civilizationPurpose}>{item.purpose}</Text>}
 
       <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={styles.progressButton}
-          onPress={() => handleLogProgress(item)}
-        >
+        <TouchableOpacity style={styles.progressButton} onPress={() => handleLogProgress(item)}>
           <Text style={styles.progressButtonText}>Log Progress</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => handleEditCivilization(item)}
-        >
+        <TouchableOpacity style={styles.editButton} onPress={() => handleEditCivilization(item)}>
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
 
@@ -237,9 +224,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
             styles.listContainer,
             civilizations.length === 0 && styles.emptyListContainer,
           ]}
-          refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
-          }
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={handleRefresh} />}
           ListEmptyComponent={renderEmptyState}
         />
 

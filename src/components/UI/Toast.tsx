@@ -62,13 +62,7 @@ export const Toast: React.FC<ToastProps> = ({
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        getToastStyle(type),
-        { opacity }
-      ]}
-    >
+    <Animated.View style={[styles.container, getToastStyle(type), { opacity }]}>
       <Text style={styles.message}>{message}</Text>
     </Animated.View>
   );
