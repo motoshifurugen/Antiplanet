@@ -12,6 +12,9 @@ import {
   setDoc,
   getDoc,
   deleteDoc,
+  enableNetwork,
+  disableNetwork,
+  connectFirestoreEmulator,
 } from 'firebase/firestore';
 
 // Firebase configuration from environment variables
@@ -34,8 +37,16 @@ if (getApps().length === 0) {
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 
+// Enable offline persistence for better UX
+// Note: This is automatically enabled in React Native
+// The SDK handles offline caching and syncing automatically
+
 // Export the app instance
 export { app };
+
+// Network control utilities for testing
+export const goOffline = () => disableNetwork(db);
+export const goOnline = () => enableNetwork(db);
 
 // Helper functions
 export const serverTimestamp = (): FieldValue => {

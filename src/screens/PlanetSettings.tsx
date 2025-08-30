@@ -15,7 +15,7 @@ import { useAppStore } from '../stores';
 import { formatRemainingDays } from '../lib/dateUtils';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { RootStackParamList } from '../app/navigation/RootNavigator';
+import { RootStackParamList } from '../navigation/navigation/RootNavigator';
 
 type PlanetSettingsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -126,7 +126,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
       showToast('Planet goal saved successfully', 'success');
     } catch (error) {
       console.error('Failed to save planet goal:', error);
-      showToast('Failed to save planet goal', 'error');
+      showToast('Unable to save planet goal. Please check your connection and try again.', 'error');
     } finally {
       setSaving(false);
     }

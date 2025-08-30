@@ -5,6 +5,7 @@ import { ExpoWebGLRenderingContext } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import * as THREE from 'three';
 import { Civilization, CivState } from '../types';
+import { colors } from '../theme/colors';
 
 export interface PlanetScene {
   scene: THREE.Scene;
@@ -108,20 +109,27 @@ export const getCivilizationPosition = (civilization: Civilization, index: numbe
 };
 
 /**
- * Get marker color based on civilization state
+ * Convert hex color string to THREE.js hex number
+ */
+const hexToThreeColor = (hexString: string): number => {
+  return parseInt(hexString.replace('#', ''), 16);
+};
+
+/**
+ * Get marker color based on civilization state (consistent with UI theme)
  */
 export const getMarkerColor = (state: CivState): number => {
   switch (state) {
     case 'uninitialized':
-      return 0x808080; // Gray
+      return hexToThreeColor(colors.border); // Theme border color
     case 'developing':
-      return 0x00ff00; // Green
+      return hexToThreeColor(colors.success); // Theme success color
     case 'decaying':
-      return 0xff8800; // Orange
+      return hexToThreeColor(colors.warning); // Theme warning color
     case 'ocean':
-      return 0x808080; // Gray (shouldn't be visible)
+      return hexToThreeColor(colors.primary); // Theme primary color (shouldn't be visible)
     default:
-      return 0x808080;
+      return hexToThreeColor(colors.border);
   }
 };
 

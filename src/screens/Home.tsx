@@ -27,7 +27,7 @@ import {
 } from '../lib/three';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { RootStackParamList } from '../app/navigation/RootNavigator';
+import { RootStackParamList } from '../navigation/navigation/RootNavigator';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -91,7 +91,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       renderScene(newScene);
     } catch (error) {
       console.error('Failed to create 3D scene:', error);
-      showToast('Failed to initialize 3D view', 'error');
+      showToast('Unable to load 3D planet view. Please restart the app.', 'error');
     }
   };
 
@@ -175,7 +175,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       }
     } catch (error) {
       console.error('Failed to record progress:', error);
-      showToast('Failed to record progress', 'error');
+      showToast('Unable to record progress. Please check your connection and try again.', 'error');
     } finally {
       setProgressLoading(false);
     }
@@ -195,9 +195,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       <View style={styles.container}>
         {civilizations.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No Civilizations Yet</Text>
+            <Text style={styles.emptyTitle}>🌍 Your Planet Awaits</Text>
             <Text style={styles.emptySubtitle}>
-              Create civilizations to see them appear on your planet
+              Your planet is ready for life! Create your first civilization to see it appear as a glowing marker on the surface. You can rotate and zoom to explore your world.
             </Text>
           </View>
         ) : (

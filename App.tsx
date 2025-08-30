@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { RootNavigator } from './src/app/navigation/RootNavigator';
+import { RootNavigator } from './src/navigation/navigation/RootNavigator';
 import { runCivilizationStateMachineTests } from './src/lib/__tests__/civilizationStateMachine.test';
 import { useAppStore } from './src/stores';
 

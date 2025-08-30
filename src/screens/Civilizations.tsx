@@ -20,7 +20,7 @@ import { Civilization, CreateCivilizationRequest, UpdateCivilizationRequest } fr
 import { formatRelativeTime, formatDate } from '../lib/dateUtils';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
-import { RootStackParamList } from '../app/navigation/RootNavigator';
+import { RootStackParamList } from '../navigation/navigation/RootNavigator';
 
 type CivilizationsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -109,7 +109,12 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       }
       deriveCivStates();
     } catch (error) {
-      showToast(`Failed to ${editingCivilization ? 'update' : 'create'} civilization`, 'error');
+      showToast(
+        editingCivilization 
+          ? 'Unable to save changes. Please check your connection and try again.' 
+          : 'Unable to create civilization. Please check your connection and try again.', 
+        'error'
+      );
       throw error; // Re-throw to prevent modal from closing
     } finally {
       setModalLoading(false);
@@ -130,7 +135,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
               await deleteCiv(civilization.id);
               showToast('Civilization deleted successfully', 'success');
             } catch (error) {
-              showToast('Failed to delete civilization', 'error');
+              showToast('Unable to delete civilization. Please check your connection and try again.', 'error');
             }
           },
         },
@@ -143,7 +148,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       await logProgress(civilization.id);
       showToast(`Progress logged for ${civilization.name}`, 'success');
     } catch (error) {
-      showToast('Failed to log progress', 'error');
+      showToast('Unable to record progress. Please check your connection and try again.', 'error');
     }
   };
 
@@ -183,12 +188,12 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateTitle}>No Civilizations Yet</Text>
+      <Text style={styles.emptyStateTitle}>🌱 Start Your First Civilization</Text>
       <Text style={styles.emptyStateSubtitle}>
-        Create your first civilization to start tracking their progress
+        Create civilizations to watch them grow, evolve, and thrive on your planet. Track their progress and see how they develop over time.
       </Text>
       <TouchableOpacity style={styles.emptyStateButton} onPress={handleAddCivilization}>
-        <Text style={styles.emptyStateButtonText}>Add First Civilization</Text>
+        <Text style={styles.emptyStateButtonText}>Create Civilization</Text>
       </TouchableOpacity>
     </View>
   );
