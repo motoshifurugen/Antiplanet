@@ -18,6 +18,10 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
   - `uninitialized` → `developing` (0-6日) → `decaying` (7-20日) → `ocean` (21日+)
   - オンデマンド評価（タイマー不使用）
   - 重要な状態遷移のみ永続化
+- **グローバルストア**: Zustandベースの状態管理
+  - モックユーザー (`demo-uid`) での文明・惑星目標管理
+  - リポジトリ統合とステートマシン自動適用
+  - プログレス記録時の自動状態更新
 
 ### 将来の追加予定機能
 
@@ -42,11 +46,11 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
 - **Types**: `@types/three` - Three.js型定義
 
 ### 設定状況
-- ✅ **Zustand**: インストール済み（設定準備完了）
+- ✅ **Zustand**: グローバルストア実装済み（モックユーザーでデータ管理）
 - ✅ **Firebase**: インストール・初期化済み（環境変数設定で有効化）
 - ✅ **State Machine**: 文明状態の決定論的評価システム実装済み
 - ✅ **Three.js**: インストール済み（`src/lib/three.ts`にプレースホルダー作成）
-- 🔄 **設定**: Firebase・State Machine完了、Three.js設定は将来実装予定
+- 🔄 **設定**: Zustand・Firebase・State Machine完了、Three.js設定は将来実装予定
 
 ## セットアップと実行
 
@@ -144,6 +148,9 @@ src/
 │   ├── planetGoalRepository.ts  # 惑星目標CRUD
 │   ├── civilizationRepository.ts # 文明CRUD
 │   └── progressLogRepository.ts # プログレスログCRUD
+├── stores/
+│   ├── index.ts                 # ストアエクスポート
+│   └── useAppStore.ts           # メインZustandストア
 ├── theme/
 │   ├── colors.ts                # カラーテーマ定義
 │   └── spacing.ts               # スペーシング定義

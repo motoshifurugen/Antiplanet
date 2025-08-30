@@ -32,37 +32,37 @@ export const runCivilizationStateMachineTests = (): void => {
     },
     {
       description: '1 day since progress → developing',
-      lastProgressAt: now - (1 * DAYS_TO_MS),
+      lastProgressAt: now - 1 * DAYS_TO_MS,
       expectedState: 'developing',
     },
     {
       description: '6 days since progress → developing',
-      lastProgressAt: now - (6 * DAYS_TO_MS),
+      lastProgressAt: now - 6 * DAYS_TO_MS,
       expectedState: 'developing',
     },
     {
       description: '7 days since progress → decaying',
-      lastProgressAt: now - (7 * DAYS_TO_MS),
+      lastProgressAt: now - 7 * DAYS_TO_MS,
       expectedState: 'decaying',
     },
     {
       description: '15 days since progress → decaying',
-      lastProgressAt: now - (15 * DAYS_TO_MS),
+      lastProgressAt: now - 15 * DAYS_TO_MS,
       expectedState: 'decaying',
     },
     {
       description: '20 days since progress → decaying',
-      lastProgressAt: now - (20 * DAYS_TO_MS),
+      lastProgressAt: now - 20 * DAYS_TO_MS,
       expectedState: 'decaying',
     },
     {
       description: '21 days since progress → ocean',
-      lastProgressAt: now - (21 * DAYS_TO_MS),
+      lastProgressAt: now - 21 * DAYS_TO_MS,
       expectedState: 'ocean',
     },
     {
       description: '30 days since progress → ocean',
-      lastProgressAt: now - (30 * DAYS_TO_MS),
+      lastProgressAt: now - 30 * DAYS_TO_MS,
       expectedState: 'ocean',
     },
   ];
@@ -70,11 +70,11 @@ export const runCivilizationStateMachineTests = (): void => {
   // Test state derivation
   for (const testCase of testCases) {
     const derivedState = deriveCivilizationState(now, testCase.lastProgressAt);
-    
+
     if (derivedState !== testCase.expectedState) {
       throw new Error(
         `State derivation test failed: ${testCase.description}\n` +
-        `Expected: ${testCase.expectedState}, Got: ${derivedState}`
+          `Expected: ${testCase.expectedState}, Got: ${derivedState}`
       );
     }
   }
@@ -115,11 +115,11 @@ export const runCivilizationStateMachineTests = (): void => {
 
   for (const test of persistenceTests) {
     const result = shouldPersistStateTransition(test.derived, test.stored);
-    
+
     if (result !== test.shouldPersist) {
       throw new Error(
         `Persistence test failed: ${test.description}\n` +
-        `Expected: ${test.shouldPersist}, Got: ${result}`
+          `Expected: ${test.shouldPersist}, Got: ${result}`
       );
     }
   }

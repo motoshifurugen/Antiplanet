@@ -14,7 +14,7 @@ const DAYS_TO_MS = 24 * 60 * 60 * 1000;
 /**
  * Derives the current civilization state based on staleness since last progress
  * This is deterministic and evaluated on-demand without timers
- * 
+ *
  * @param now Current timestamp in milliseconds
  * @param lastProgressAt Last progress timestamp in milliseconds (undefined if no progress)
  * @returns Current civilization state
@@ -44,11 +44,11 @@ export const deriveCivilizationState = (now: number, lastProgressAt?: number): C
 /**
  * Determines if a persisted state transition is required
  * Returns true only when:
- * - Derived state is 'decaying' or 'ocean' 
+ * - Derived state is 'decaying' or 'ocean'
  * - AND differs from the previously stored state
- * 
+ *
  * Note: Returning to 'developing' is visual-only for MVP (no persistence)
- * 
+ *
  * @param derivedState Current derived state
  * @param storedState Previously stored state
  * @returns Whether to persist the state transition
@@ -69,7 +69,7 @@ export const shouldPersistStateTransition = (
 /**
  * Evaluates civilization state with persistence decision
  * Convenience function that combines state derivation and persistence logic
- * 
+ *
  * @param now Current timestamp in milliseconds
  * @param lastProgressAt Last progress timestamp in milliseconds
  * @param storedState Previously stored state
