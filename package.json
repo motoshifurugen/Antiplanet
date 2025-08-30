@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
+    "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/native": "^7.1.6",
     "@react-navigation/native-stack": "^7.3.25",
     "expo": "~53.0.22",
@@ -35,12 +36,12 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.6",
+    "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "^5.6.1",
     "react-native-screens": "^4.15.4",
     "react-native-web": "~0.20.0",
-    "zustand": "^4.5.7",
-    "react-native-gesture-handler": "~2.24.0"
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

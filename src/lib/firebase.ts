@@ -2,7 +2,8 @@
 // Firebase v11 (modular v9+ API) for Expo SDK 53
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, Auth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getFirestore,
   Firestore,
@@ -33,8 +34,22 @@ if (getApps().length === 0) {
   app = getApps()[0];
 }
 
-// Initialize Firebase services
-export const auth: Auth = getAuth(app);
+// Initialize Firebase services with AsyncStorage persistence
+let auth: Auth;
+try {
+  if (getApps().length === 0) {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
+  } else {
+    auth = getAuth(app);
+  }
+} catch (error) {
+  // Fallback to default auth if initializeAuth fails
+  auth = getAuth(app);
+}
+
+export { auth };
 export const db: Firestore = getFirestore(app);
 
 // Enable offline persistence for better UX
