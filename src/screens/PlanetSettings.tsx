@@ -120,7 +120,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
         title: goalTitle.trim(),
         deadline,
       });
-      
+
       setOriginalTitle(goalTitle.trim());
       setOriginalDeadline(deadline);
       showToast('Planet goal saved successfully', 'success');
@@ -208,10 +208,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.saveButton,
-                (!hasChanges() || saving) && styles.buttonDisabled,
-              ]}
+              style={[styles.saveButton, (!hasChanges() || saving) && styles.buttonDisabled]}
               onPress={handleSave}
               disabled={!hasChanges() || saving}
             >
