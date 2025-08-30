@@ -11,3 +11,6 @@ export const utils = {
 
 // Re-export civilization state machine
 export * from './civilizationStateMachine';
+
+// Re-export date utilities
+export * from './dateUtils';

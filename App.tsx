@@ -10,7 +10,7 @@ export default function App() {
   useEffect(() => {
     // Run self-tests in development only
     runCivilizationStateMachineTests();
-    
+
     // Initialize app data
     loadAll().catch(error => {
       console.error('Failed to initialize app data:', error);

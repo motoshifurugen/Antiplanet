@@ -9,7 +9,11 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
 ### 現在の機能（MVP版）
 
 - **Planet View**: メインダッシュボード
-- **Civilizations**: 文明一覧の表示（モックデータ）
+- **Civilizations**: 完全CRUD機能付き文明管理
+  - 文明一覧表示（導出状態・最終プログレス時刻）
+  - 文明追加・編集・削除
+  - プログレス記録（自動状態更新）
+  - 空状態・ローディング・エラーハンドリング
 - **Planet Settings**: 惑星目標と期限の設定フォーム
 
 ### 現在の追加機能
@@ -133,14 +137,18 @@ src/
 │   ├── Civilizations.tsx        # 文明一覧スクリーン
 │   └── PlanetSettings.tsx       # 惑星設定スクリーン
 ├── components/
+│   ├── CivilizationModal.tsx    # 文明追加・編集モーダル
 │   └── UI/
-│       └── Screen.tsx           # 安全領域付きスクリーンラッパー
+│       ├── Screen.tsx           # 安全領域付きスクリーンラッパー
+│       ├── StateBadge.tsx       # 文明状態バッジ
+│       └── Toast.tsx            # トースト通知
 ├── lib/
 │   ├── __tests__/
 │   │   └── civilizationStateMachine.test.ts # セルフテスト（開発環境のみ）
 │   ├── index.ts                 # ユーティリティ関数
 │   ├── firebase.ts              # Firebase v11初期化・ヘルパー
 │   ├── civilizationStateMachine.ts # 文明状態の決定論的評価
+│   ├── dateUtils.ts             # 日付・時刻フォーマット関数
 │   └── three.ts                 # Three.js設定（プレースホルダー）
 ├── repositories/
 │   ├── index.ts                 # リポジトリエクスポート
