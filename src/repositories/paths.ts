@@ -10,11 +10,19 @@ export const userDoc = (uid: string): string => {
 };
 
 /**
+ * Planet goal collection path
+ * Contains planet-wide goals and deadlines for a specific user
+ */
+export const planetGoalCol = (uid: string): string => {
+  return `users/${uid}/planetGoal`;
+};
+
+/**
  * Planet goal document path
  * Contains planet-wide goals and deadlines for a specific user
  */
 export const planetGoalDoc = (uid: string): string => {
-  return `users/${uid}/planet/goals`;
+  return `users/${uid}/planetGoal/goal`;
 };
 
 /**
@@ -38,7 +46,7 @@ export const civilizationDoc = (uid: string, id: string): string => {
  * Contains progress entries, milestones, and historical data
  */
 export const progressCol = (uid: string, civId: string): string => {
-  return `users/${uid}/civilizations/${civId}/progress`;
+  return `users/${uid}/civilizations/${civId}/progressLogs`;
 };
 
 /**
@@ -46,13 +54,13 @@ export const progressCol = (uid: string, civId: string): string => {
  * Contains individual progress entry data
  */
 export const progressDoc = (uid: string, civId: string, progressId: string): string => {
-  return `users/${uid}/civilizations/${civId}/progress/${progressId}`;
+  return `users/${uid}/civilizations/${civId}/progressLogs/${progressId}`;
 };
 
 // Example of how these paths will be used:
 // - User profile: users/{uid}
-// - Planet goals: users/{uid}/planet/goals
+// - Planet goals: users/{uid}/planetGoal/goal
 // - All civilizations: users/{uid}/civilizations
 // - Specific civilization: users/{uid}/civilizations/{civId}
-// - Civilization progress: users/{uid}/civilizations/{civId}/progress
-// - Specific progress entry: users/{uid}/civilizations/{civId}/progress/{progressId}
+// - Civilization progress: users/{uid}/civilizations/{civId}/progressLogs
+// - Specific progress entry: users/{uid}/civilizations/{civId}/progressLogs/{progressId}

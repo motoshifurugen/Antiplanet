@@ -32,7 +32,7 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
   - オンデマンド評価（タイマー不使用）
   - 重要な状態遷移のみ永続化
 - **グローバルストア**: Zustandベースの状態管理
-  - モックユーザー (`demo-uid`) での文明・惑星目標管理
+  - 匿名認証によるユーザー識別とセッション永続化
   - リポジトリ統合とステートマシン自動適用
   - プログレス記録時の自動状態更新
 - **3Dレンダリング**: expo-three + Three.jsによる低ポリゴン惑星表示
@@ -95,18 +95,32 @@ Firebase機能を使用するには、プロジェクトルートに `.env` フ�
 FIREBASE_API_KEY=your_api_key_here
 FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 FIREBASE_APP_ID=your_app_id
 ```
 
 **セットアップ手順**:
 1. Firebase Console（https://console.firebase.google.com）でプロジェクトを作成
-2. プロジェクト設定 > 全般タブから設定値を取得
-3. 上記の値を `.env` ファイルに設定
+2. Webアプリを追加してFirebaseConfigを取得
+3. プロジェクト設定 > 全般タブ > マイアプリから設定値をコピー
+4. 上記の値を `.env` ファイルに設定（**クォートなし**）
+
+**Firebase設定の仕組み**:
+- 開発環境: `.env` ファイルから `app.config.ts` 経由で `extra.firebase` に配置
+- 本番環境: EAS Build時に環境変数から自動設定
+- ランタイム: `expo-constants` 経由でFirebase初期化に使用
+
+**認証状態の永続化**:
+- React Native: AsyncStorageで自動的に認証状態が永続化
+- Web: ブラウザの標準ストレージを使用
+- セッション情報はアプリ再起動後も保持される
+- 匿名認証を使用してユーザー識別を実現
 
 **注意**: 
 - `.env` ファイルは `.gitignore` に含まれています
-- 現在は設定なしでもアプリは動作します（Firebase機能は無効）
-- Expo環境変数は `process.env.*` でアクセス可能
+- 全ての必須キーが設定されていない場合、起動時にエラーが表示されます
+- Firebase設定エラーは起動時のデバッグログで確認可能
 
 ### 開発サーバーの起動
 
@@ -207,7 +221,7 @@ src/
 ### 🚧 現在の制限事項
 
 #### MVPとしての制限
-- **認証システム**: 現在はモックユーザー（`demo-uid`）を使用、マルチユーザー対応なし
+- **認証システム**: 匿名認証を使用してユーザー識別を実現（マルチユーザー対応なし）
 - **連続アニメーション**: 3Dシーンは意図的にオンデマンドレンダリング（バッテリー効率重視）
 - **複雑な物理演算**: シンプルな球面マーカー配置のみ
 - **プッシュ通知**: リアルタイム通知機能なし

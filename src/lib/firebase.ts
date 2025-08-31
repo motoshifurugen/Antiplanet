@@ -2,8 +2,10 @@
 // Firebase v11 (modular v9+ API) for Expo SDK 53
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getAuth, Auth, initializeAuth } from 'firebase/auth';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import {
   getFirestore,
   Firestore,
@@ -18,13 +20,36 @@ import {
   connectFirestoreEmulator,
 } from 'firebase/firestore';
 
-// Firebase configuration from environment variables
+// Firebase configuration from Expo Constants
+const firebaseExtraConfig = Constants.expoConfig?.extra?.firebase;
+
+// Runtime guard: Ensure all required Firebase keys are present
+const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'];
+const missingKeys = requiredKeys.filter(key => !firebaseExtraConfig?.[key]);
+
+if (missingKeys.length > 0) {
+  throw new Error(
+    `Missing Firebase configuration keys: ${missingKeys.join(', ')}. ` +
+    'Please check your .env file and app.config.ts'
+  );
+}
+
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  appId: process.env.FIREBASE_APP_ID,
+  apiKey: firebaseExtraConfig.apiKey,
+  authDomain: firebaseExtraConfig.authDomain,
+  projectId: firebaseExtraConfig.projectId,
+  storageBucket: firebaseExtraConfig.storageBucket,
+  messagingSenderId: firebaseExtraConfig.messagingSenderId,
+  appId: firebaseExtraConfig.appId,
 };
+
+// デバッグ用：設定値を確認（APIキーはマスク）
+console.log('Firebase Config Debug:', {
+  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'undefined',
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 20)}...` : 'undefined',
+});
 
 // Initialize Firebase app (singleton pattern)
 let app: FirebaseApp;
@@ -34,18 +59,24 @@ if (getApps().length === 0) {
   app = getApps()[0];
 }
 
-// Initialize Firebase services with AsyncStorage persistence
+// Initialize Firebase Auth with AsyncStorage persistence (React Native only)
 let auth: Auth;
 try {
-  if (getApps().length === 0) {
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage)
-    });
+  if (Platform.OS !== 'web' && getApps().length === 1) {
+    // Initialize Auth with AsyncStorage persistence for React Native
+    // Firebase v11 automatically uses AsyncStorage when available
+    auth = initializeAuth(app);
+    
+    // Ensure AsyncStorage is available for persistence
+    if (AsyncStorage) {
+      console.log('AsyncStorage persistence enabled for Firebase Auth');
+    }
   } else {
+    // Fallback to default auth (web or if already initialized)
     auth = getAuth(app);
   }
 } catch (error) {
-  // Fallback to default auth if initializeAuth fails
+  console.warn('Failed to initialize Auth with persistence, using default:', error);
   auth = getAuth(app);
 }
 
@@ -58,6 +89,28 @@ export const db: Firestore = getFirestore(app);
 
 // Export the app instance
 export { app };
+
+// Authentication utilities
+export const signInAnonymously = async (): Promise<string> => {
+  try {
+    const { user } = await import('firebase/auth').then(({ signInAnonymously }) => 
+      signInAnonymously(auth)
+    );
+    console.log('Signed in anonymously with UID:', user.uid);
+    return user.uid;
+  } catch (error) {
+    console.error('Failed to sign in anonymously:', error);
+    throw error;
+  }
+};
+
+export const getCurrentUser = () => {
+  return auth.currentUser;
+};
+
+export const onAuthStateChanged = (callback: (user: any) => void) => {
+  return auth.onAuthStateChanged(callback);
+};
 
 // Network control utilities for testing
 export const goOffline = () => disableNetwork(db);

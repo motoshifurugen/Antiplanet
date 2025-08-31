@@ -23,18 +23,19 @@ import {
   deriveCivilizationState,
   shouldPersistStateTransition,
 } from '../lib/civilizationStateMachine';
-
-// Mock user ID for MVP
-const DEMO_UID = 'demo-uid';
+import { signInAnonymously, getCurrentUser, onAuthStateChanged } from '../lib/firebase';
 
 interface AppState {
   // State
-  uid: string;
+  uid: string | null;
+  isAuthenticated: boolean;
   planetGoal: PlanetGoal | null;
   civilizations: Civilization[];
   loading: boolean;
+  authLoading: boolean;
 
   // Actions
+  initializeAuth: () => Promise<void>;
   loadAll: () => Promise<void>;
   loadPlanetGoal: () => Promise<void>;
   loadCivilizations: () => Promise<void>;
@@ -57,13 +58,73 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
-  uid: DEMO_UID,
+  uid: null,
+  isAuthenticated: false,
   planetGoal: null,
   civilizations: [],
   loading: false,
+  authLoading: false,
 
-  // Load all data
+  // Initialize authentication
+  initializeAuth: async () => {
+    set({ authLoading: true });
+    
+    try {
+      // Set up auth state listener for persistence
+      onAuthStateChanged((user) => {
+        if (user) {
+          console.log('Auth state changed - User signed in:', user.uid);
+          set({ 
+            uid: user.uid, 
+            isAuthenticated: true, 
+            authLoading: false 
+          });
+        } else {
+          console.log('Auth state changed - User signed out');
+          set({ 
+            uid: null, 
+            isAuthenticated: false, 
+            authLoading: false 
+          });
+        }
+      });
+
+      // Check if user is already signed in
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        console.log('User already signed in:', currentUser.uid);
+        set({ 
+          uid: currentUser.uid, 
+          isAuthenticated: true, 
+          authLoading: false 
+        });
+        return;
+      }
+
+      // Sign in anonymously
+      console.log('Signing in anonymously...');
+      const uid = await signInAnonymously();
+      set({ 
+        uid, 
+        isAuthenticated: true, 
+        authLoading: false 
+      });
+    } catch (error) {
+      console.error('Failed to initialize authentication:', error);
+      set({ authLoading: false });
+      throw error;
+    }
+  },
+
+  // Load all data (only after authentication)
   loadAll: async () => {
+    const { uid, isAuthenticated } = get();
+    
+    if (!isAuthenticated || !uid) {
+      console.warn('Cannot load data: not authenticated');
+      return;
+    }
+
     set({ loading: true });
 
     try {
@@ -81,6 +142,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Load planet goal
   loadPlanetGoal: async () => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot load planet goal: no UID');
+      return;
+    }
 
     try {
       const goal = await getPlanetGoal(uid);
@@ -94,6 +160,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Load civilizations
   loadCivilizations: async () => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot load civilizations: no UID');
+      return;
+    }
 
     try {
       const civilizations = await getCivilizations(uid);
@@ -107,6 +178,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Save planet goal
   savePlanetGoal: async (goal: PlanetGoal) => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot save planet goal: no UID');
+      throw new Error('Not authenticated');
+    }
 
     try {
       await setPlanetGoal(uid, goal);
@@ -120,6 +196,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Create civilization
   createCiv: async (data: CreateCivilizationRequest) => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot create civilization: no UID');
+      throw new Error('Not authenticated');
+    }
 
     try {
       const civId = await createCivilization(uid, data);
@@ -138,6 +219,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Update civilization
   updateCiv: async (id: string, patch: UpdateCivilizationRequest) => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot update civilization: no UID');
+      throw new Error('Not authenticated');
+    }
 
     try {
       await updateCivilization(uid, id, patch);
@@ -153,6 +239,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Delete civilization
   deleteCiv: async (id: string) => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot delete civilization: no UID');
+      throw new Error('Not authenticated');
+    }
 
     try {
       await deleteCivilization(uid, id);
@@ -170,6 +261,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Refresh single civilization
   refreshCiv: async (id: string) => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot refresh civilization: no UID');
+      return;
+    }
 
     try {
       const civilization = await getCivilization(uid, id);
@@ -190,6 +286,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Log progress for a civilization
   logProgress: async (id: string) => {
     const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot log progress: no UID');
+      throw new Error('Not authenticated');
+    }
 
     try {
       // Create progress log entry
@@ -211,7 +312,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Derive current states for all civilizations
   deriveCivStates: () => {
-    const { civilizations } = get();
+    const { civilizations, uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot derive states: no UID');
+      return;
+    }
+    
     const now = Date.now();
 
     const updatedCivilizations = civilizations.map(civ => {
@@ -224,7 +331,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       // If persistence is needed, update Firestore
       if (needsPersist) {
         // Async update without blocking UI
-        updateCivilization(get().uid, civ.id, { state: derivedState })
+        updateCivilization(uid, civ.id, { state: derivedState })
           .then(() => {
             console.log(
               `Persisted state transition for ${civ.name}: ${civ.state} → ${derivedState}`
