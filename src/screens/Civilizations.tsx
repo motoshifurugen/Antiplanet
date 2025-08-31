@@ -24,6 +24,7 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { RootStackParamList } from '../navigation/navigation/RootNavigator';
 import { ui } from '../theme/ui';
+import { strings } from '../i18n/strings';
 
 type CivilizationsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -105,10 +106,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     try {
       if (editingCivilization) {
         await updateCiv(editingCivilization.id, data);
-        showToast('挑戦が正常に更新されました', 'success');
+        showToast(strings.messages.civilizationUpdated, 'success');
       } else {
         await createCiv(data as CreateCivilizationRequest);
-        showToast('挑戦が正常に作成されました', 'success');
+        showToast(strings.messages.civilizationCreated, 'success');
       }
       deriveCivStates();
     } catch (error) {
@@ -127,17 +128,17 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 
   const handleDeleteCivilization = (civilization: Civilization) => {
     Alert.alert(
-      '挑戦を削除',
-      `"${civilization.name}"を削除してもよろしいですか？この操作は元に戻せません。`,
+      strings.deleteConfirm.title,
+      `"${civilization.name}"を削除してもよろしいですか？${strings.deleteConfirm.message}`,
       [
-        { text: 'キャンセル', style: 'cancel' },
+        { text: strings.actions.cancel, style: 'cancel' },
         {
-          text: '削除',
+          text: strings.deleteConfirm.confirm,
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteCiv(civilization.id);
-              showToast('挑戦が正常に削除されました', 'success');
+              showToast(strings.messages.civilizationDeleted, 'success');
             } catch (error) {
               console.error('Failed to delete civilization:', error);
               showToast('挑戦を削除できませんでした。接続を確認して再試行してください。', 'error');
@@ -151,9 +152,9 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
   const handleLogProgress = async (civilization: Civilization) => {
     try {
       await logProgress(civilization.id);
-      showToast(`Progress logged for ${civilization.name}`, 'success');
+      showToast(strings.messages.progressLogged, 'success');
     } catch (error) {
-      showToast('Unable to record progress. Please check your connection and try again.', 'error');
+      showToast(strings.messages.progressFailed, 'error');
     }
   };
 
@@ -166,26 +167,26 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
         </View>
       </View>
 
-      <Text style={styles.civilizationDetail}>期限: {formatDate(item.deadline)}</Text>
-      <Text style={styles.civilizationDetail}>
-        最終成長ログ: {formatRelativeTime(item.lastProgressAt)}
-      </Text>
+              <Text style={styles.civilizationDetail}>{strings.civilization.fields.deadline}: {formatDate(item.deadline)}</Text>
+        <Text style={styles.civilizationDetail}>
+          {strings.civilization.fields.lastProgress}: {formatRelativeTime(item.lastProgressAt)}
+        </Text>
       {item.purpose && <Text style={styles.civilizationPurpose}>{item.purpose}</Text>}
 
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.progressButton} onPress={() => handleLogProgress(item)}>
-          <Text style={styles.progressButtonText}>成長ログを記録</Text>
+          <Text style={styles.progressButtonText}>{strings.actions.recordProgress}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.editButton} onPress={() => handleEditCivilization(item)}>
-          <Text style={styles.editButtonText}>編集</Text>
+          <Text style={styles.editButtonText}>{strings.actions.edit}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => handleDeleteCivilization(item)}
         >
-          <Text style={styles.deleteButtonText}>削除</Text>
+          <Text style={styles.deleteButtonText}>{strings.actions.delete}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -196,9 +197,9 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       <View style={styles.emptyStateIconContainer}>
         <Icon name="civilizations" size="xl" color={colors.primary} />
       </View>
-      <Text style={styles.emptyStateTitle}>まだ登録がありません</Text>
+      <Text style={styles.emptyStateTitle}>{strings.civilization.emptyState.title}</Text>
       <Text style={styles.emptyStateSubtitle}>
-        まずは1つ追加しましょう。挑戦を登録すると、成長ログを追跡できます。
+        {strings.civilization.emptyState.subtitle}
       </Text>
     </View>
   );
@@ -208,7 +209,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       <Screen>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>やりたいことを読み込み中...</Text>
+          <Text style={styles.loadingText}>{strings.messages.loading.civilizations}</Text>
         </View>
         <Toast {...toast} onHide={hideToast} />
       </Screen>
@@ -219,10 +220,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     <Screen>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>挑戦</Text>
+          <Text style={styles.title}>{strings.screens.civilizations.title}</Text>
           <TouchableOpacity style={styles.addButton} onPress={handleAddCivilization}>
             <Icon name="add" size="sm" color="#FFFFFF" style={styles.addButtonIcon} />
-            <Text style={styles.addButtonText}>挑戦を追加</Text>
+            <Text style={styles.addButtonText}>{strings.screens.civilizations.addButton}</Text>
           </TouchableOpacity>
         </View>
 

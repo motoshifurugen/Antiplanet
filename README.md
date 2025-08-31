@@ -1,10 +1,10 @@
-# Antiplanet
+# StellarLog
 
 **A civilization lifecycle simulator built with Expo React Native**
 
 ## 概要
 
-Antiplanetは惑星と文明のライフサイクルをシミュレートするMVPアプリケーションです。Expo SDK 53、TypeScript、React Navigation v7を使用して構築されています。
+StellarLogは『挑戦を記録すると、星と文明が育つ』世界観の挑戦記録アプリです。Expo SDK 53、TypeScript、React Navigation v7を使用して構築されています。
 
 ### 現在の機能（MVP版）
 
@@ -293,3 +293,19 @@ src/
 ---
 
 **注意**: 3D機能（expo-three）とFirebase統合は将来のバージョンで追加予定です。
+
+## ブランド変更について
+
+このプロジェクトは「Antiplanet」から「StellarLog」にブランド名を変更しました。アプリの世界観（星のビジョン / 挑戦 / 成長ログ）は維持されており、ユーザーエクスペリエンスは向上しています。
+
+**変更された要素**:
+- アプリ名: StellarLog
+- イントロ画面のナラティブ
+- チュートリアルの文言
+- UIラベルの統一
+
+**変更されていない要素**:
+- バンドル識別子（iOS/Android）
+- Firebase設定
+- ファイルパス・インポート
+- 3D惑星ビジュアル

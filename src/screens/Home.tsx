@@ -32,6 +32,7 @@ import { typography } from '../theme/typography';
 import { ui } from '../theme/ui';
 import { createAnimation } from '../theme/animations';
 import { RootStackParamList } from '../navigation/navigation/RootNavigator';
+import { strings } from '../i18n/strings';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -204,7 +205,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     setProgressLoading(true);
     try {
       await logProgress(civilization.id);
-      showToast('成長ログを記録しました', 'success');
+      showToast(strings.messages.progressLogged, 'success');
       
       // Update the scene markers after progress is recorded
       if (scene) {
@@ -213,7 +214,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Failed to record progress:', error);
-      showToast('成長ログの記録に失敗しました。接続を確認して再試行してください。', 'error');
+      showToast(strings.messages.progressFailed, 'error');
     } finally {
       setProgressLoading(false);
     }
@@ -250,7 +251,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   { transform: [{ scale: titleScale }] }
                 ]}
               >
-                ようこそ、Antiplanetへ
+                {strings.intro.title}
               </Animated.Text>
               
               <Animated.Text 
@@ -259,22 +260,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   { opacity: subtitleOpacity }
                 ]}
               >
-                あなたが挑戦するたびに、{'\n'}
-                星は呼吸し、{'\n'}
-                文明は進化していく。{'\n\n'}
-                偶然も、つまずきも、{'\n'}
-                すべてが星の糧となり、{'\n'}
-                少しずつ大地が広がり、{'\n'}
-                灯りがともっていく。{'\n\n'}
-                これは、あなただけの{'\n'}
-                物語を刻むアプリです。
+                {strings.intro.narrative}
               </Animated.Text>
               
               <TouchableOpacity 
                 style={styles.tutorialCTA}
                 onPress={() => setTutorialStep(1)}
               >
-                <Text style={styles.tutorialCTAText}>はじめる</Text>
+                <Text style={styles.tutorialCTAText}>{strings.intro.cta}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -295,7 +288,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   { transform: [{ scale: titleScale }] }
                 ]}
               >
-                はじめに、星のビジョンを決めましょう
+                {strings.tutorial.title}
               </Animated.Text>
               
               <Animated.Text 
@@ -311,17 +304,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 style={styles.tutorialCTA}
                 onPress={() => navigation.navigate('PlanetSettings')}
               >
-                <Text style={styles.tutorialCTAText}>星のビジョンを設定する</Text>
+                <Text style={styles.tutorialCTAText}>{strings.tutorial.cta}</Text>
               </TouchableOpacity>
               
-              <Animated.Text 
-                style={[
-                  styles.tutorialHelper,
-                  { opacity: subtitleOpacity }
-                ]}
-              >
-                星のビジョンを決めると、あなたの惑星が誕生します。
-              </Animated.Text>
+              {strings.tutorial.helper && (
+                <Animated.Text 
+                  style={[
+                    styles.tutorialHelper,
+                    { opacity: subtitleOpacity }
+                  ]}
+                >
+                  {strings.tutorial.helper}
+                </Animated.Text>
+              )}
             </View>
           )
         ) : showFirstCivilizationHint ? (
@@ -341,14 +336,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 { transform: [{ scale: titleScale }] }
               ]}
             >
-              最初の挑戦を登録しましょう
+              {strings.screens.home.hintTitle}
             </Animated.Text>
             
             <TouchableOpacity 
               style={styles.hintCTA}
               onPress={() => navigation.navigate('Civilizations')}
             >
-              <Text style={styles.hintCTAText}>挑戦を追加</Text>
+              <Text style={styles.hintCTAText}>{strings.screens.home.hintCta}</Text>
             </TouchableOpacity>
           </View>
         ) : civilizations.length === 0 ? (
@@ -498,7 +493,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     fontWeight: 'bold',
     letterSpacing: 0.5,
-    maxWidth: 300,
+    maxWidth: 320,
+    lineHeight: 32,
   },
   tutorialSubtitle: {
     ...typography.body,

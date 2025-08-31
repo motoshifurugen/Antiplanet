@@ -24,6 +24,7 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { RootStackParamList } from '../navigation/navigation/RootNavigator';
 import { ui } from '../theme/ui';
+import { strings } from '../i18n/strings';
 
 type PlanetSettingsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -149,24 +150,24 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!goalTitle.trim()) {
-      newErrors.title = '目標タイトルは必須です';
+      newErrors.title = strings.form.titleRequired;
     }
 
     if (!deadline.trim()) {
-      newErrors.deadline = '期限は必須です';
+      newErrors.deadline = strings.form.deadlineRequired;
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
-      newErrors.deadline = '無効な日付形式です';
+      newErrors.deadline = strings.form.invalidDate;
     } else {
       const date = new Date(deadline);
       if (isNaN(date.getTime())) {
-        newErrors.deadline = '無効な日付です';
+        newErrors.deadline = strings.form.invalidDate;
       }
       
       // Check if date is in the past
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (date < today) {
-        newErrors.deadline = '期限は今日以降の日付を選択してください';
+        newErrors.deadline = strings.form.pastDate;
       }
     }
 
@@ -192,7 +193,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
 
       setOriginalTitle(goalTitle.trim());
       setOriginalDeadline(deadline);
-      showToast('惑星目標が正常に保存されました', 'success');
+      showToast(strings.messages.planetGoalSaved, 'success');
       
       // Check if this is the first time setting up the planet and no civilizations exist
       if (civilizations.length === 0) {
@@ -225,10 +226,10 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: [...years.map(year => year.toString()), 'キャンセル'],
-          cancelButtonIndex: years.length,
-          title: '年を選択',
-          message: '目標の期限年を選択してください',
+                  options: [...years.map(year => year.toString()), strings.actions.cancel],
+        cancelButtonIndex: years.length,
+                  title: strings.datePicker.selectYear,
+        message: strings.datePicker.yearMessage,
         },
         (buttonIndex) => {
           if (buttonIndex !== years.length) {
@@ -252,29 +253,26 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
       }));
 
       Alert.alert(
-        '年を選択',
-        '目標の期限年を選択してください',
+        strings.datePicker.selectYear,
+        strings.datePicker.yearMessage,
         [
           ...yearOptions,
-          { text: 'キャンセル', style: 'cancel' as const },
+          { text: strings.actions.cancel, style: 'cancel' as const },
         ]
       );
     }
   };
 
   const showMonthPicker = () => {
-    const months = [
-      '1月', '2月', '3月', '4月', '5月', '6月',
-      '7月', '8月', '9月', '10月', '11月', '12月'
-    ];
+    const months = strings.datePicker.months;
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: [...months, 'キャンセル'],
-          cancelButtonIndex: months.length,
-          title: '月を選択',
-          message: '目標の期限月を選択してください',
+                  options: [...months, strings.actions.cancel],
+        cancelButtonIndex: months.length,
+                  title: strings.datePicker.selectMonth,
+        message: strings.datePicker.monthMessage,
         },
         (buttonIndex) => {
           if (buttonIndex !== months.length) {
@@ -302,11 +300,11 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
       }));
 
       Alert.alert(
-        '月を選択',
-        '目標の期限月を選択してください',
+        strings.datePicker.selectMonth,
+        strings.datePicker.monthMessage,
         [
           ...monthOptions,
-          { text: 'キャンセル', style: 'cancel' as const },
+          { text: strings.actions.cancel, style: 'cancel' as const },
         ]
       );
     }
@@ -322,10 +320,10 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: [...days.map(day => day.toString()), 'キャンセル'],
-          cancelButtonIndex: days.length,
-          title: '日を選択',
-          message: '目標の期限日を選択してください',
+                  options: [...days.map(day => day.toString()), strings.actions.cancel],
+        cancelButtonIndex: days.length,
+                  title: strings.datePicker.selectDay,
+        message: strings.datePicker.dayMessage,
         },
         (buttonIndex) => {
           if (buttonIndex !== days.length) {
@@ -356,18 +354,18 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
 
         const buttons = [
           ...dayOptions,
-          { text: '前の10件', onPress: () => showDayGroup(dayGroups[startIndex - 1] || [], startIndex - 1) },
-          { text: '次の10件', onPress: () => showDayGroup(dayGroups[startIndex + 1] || [], startIndex + 1) },
-          { text: 'キャンセル', style: 'cancel' as const },
+                  { text: strings.datePicker.previous10, onPress: () => showDayGroup(dayGroups[startIndex - 1] || [], startIndex - 1) },
+        { text: strings.datePicker.next10, onPress: () => showDayGroup(dayGroups[startIndex + 1] || [], startIndex + 1) },
+          { text: strings.actions.cancel, style: 'cancel' as const },
         ].filter((_, index) => {
           if (startIndex === 0 && index === dayOptions.length + 1) return false; // Hide "前の10件" for first group
           if (startIndex === dayGroups.length - 1 && index === dayOptions.length + 2) return false; // Hide "次の10件" for last group
           return true;
         });
 
-        Alert.alert(
-          '日を選択',
-          '目標の期限日を選択してください',
+              Alert.alert(
+        strings.datePicker.selectDay,
+        strings.datePicker.dayMessage,
           buttons
         );
       };
@@ -381,7 +379,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
       <Screen>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>星のビジョンを読み込み中...</Text>
+          <Text style={styles.loadingText}>{strings.messages.loading.vision}</Text>
         </View>
         <Toast {...toast} onHide={hideToast} />
       </Screen>
@@ -392,12 +390,12 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
     <Screen>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
-          <Text style={styles.title}>星のビジョンを決める</Text>
-          <Text style={styles.subtitle}>このビジョンがあなたのAntiplanetを導きます</Text>
+          <Text style={styles.title}>{strings.screens.planetSettings.title}</Text>
+          <Text style={styles.subtitle}>{strings.screens.planetSettings.subtitle}</Text>
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>ビジョン *</Text>
+              <Text style={styles.label}>{strings.screens.planetSettings.fields.vision} *</Text>
               <TextInput
                 style={[styles.input, errors.title && styles.inputError]}
                 value={goalTitle}
@@ -415,11 +413,11 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>期限 *</Text>
+              <Text style={styles.label}>{strings.screens.planetSettings.fields.deadline} *</Text>
               <View style={styles.dateSelectorContainer}>
                 {/* Year Selector */}
                 <View style={styles.dateSelectorGroup}>
-                  <Text style={styles.dateSelectorLabel}>年</Text>
+                  <Text style={styles.dateSelectorLabel}>{strings.datePicker.year}</Text>
                   <TouchableOpacity
                     style={styles.dateSelectorButton}
                     onPress={showYearPicker}
@@ -434,7 +432,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
 
                 {/* Month Selector */}
                 <View style={styles.dateSelectorGroup}>
-                  <Text style={styles.dateSelectorLabel}>月</Text>
+                  <Text style={styles.dateSelectorLabel}>{strings.datePicker.month}</Text>
                   <TouchableOpacity
                     style={styles.dateSelectorButton}
                     onPress={showMonthPicker}
@@ -449,7 +447,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
 
                 {/* Day Selector */}
                 <View style={styles.dateSelectorGroup}>
-                  <Text style={styles.dateSelectorLabel}>日</Text>
+                  <Text style={styles.dateSelectorLabel}>{strings.datePicker.day}</Text>
                   <TouchableOpacity
                     style={styles.dateSelectorButton}
                     onPress={showDayPicker}
@@ -488,7 +486,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
                   <>
                     <Icon name="save" size="sm" color="#FFFFFF" style={styles.buttonIcon} />
                     <Text style={[styles.saveButtonText, !hasChanges() && styles.buttonTextDisabled]}>
-                      保存
+                      {strings.actions.save}
                     </Text>
                   </>
                 )}
