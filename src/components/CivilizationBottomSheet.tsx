@@ -68,12 +68,12 @@ export const CivilizationBottomSheet: React.FC<CivilizationBottomSheetProps> = (
             {/* Info */}
             <View style={styles.infoSection}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Deadline:</Text>
+                <Text style={styles.infoLabel}>期限:</Text>
                 <Text style={styles.infoValue}>{formatDate(civilization.deadline)}</Text>
               </View>
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Last Progress:</Text>
+                <Text style={styles.infoLabel}>最終進捗:</Text>
                 <Text style={styles.infoValue}>
                   {formatRelativeTime(civilization.lastProgressAt)}
                 </Text>
@@ -81,7 +81,7 @@ export const CivilizationBottomSheet: React.FC<CivilizationBottomSheetProps> = (
 
               {civilization.purpose && (
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Purpose:</Text>
+                  <Text style={styles.infoLabel}>目的:</Text>
                   <Text style={styles.infoValue}>{civilization.purpose}</Text>
                 </View>
               )}
@@ -97,12 +97,12 @@ export const CivilizationBottomSheet: React.FC<CivilizationBottomSheetProps> = (
                 {loading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.progressButtonText}>Record Progress</Text>
+                  <Text style={styles.progressButtonText}>進捗を記録</Text>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Text style={styles.closeButtonText}>Close</Text>
+                <Text style={styles.closeButtonText}>閉じる</Text>
               </TouchableOpacity>
             </View>
           </Pressable>

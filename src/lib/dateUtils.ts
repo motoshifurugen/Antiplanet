@@ -5,7 +5,7 @@
  */
 export const formatRelativeTime = (timestamp?: number): string => {
   if (!timestamp) {
-    return 'Never';
+    return '未記録';
   }
 
   const now = Date.now();
@@ -15,18 +15,18 @@ export const formatRelativeTime = (timestamp?: number): string => {
   const diffMinutes = Math.floor(diffMs / (60 * 1000));
 
   if (diffDays > 0) {
-    return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    return `${diffDays}日前`;
   }
 
   if (diffHours > 0) {
-    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    return `${diffHours}時間前`;
   }
 
   if (diffMinutes > 0) {
-    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+    return `${diffMinutes}分前`;
   }
 
-  return 'Just now';
+  return '今';
 };
 
 /**
@@ -70,18 +70,18 @@ export const formatRemainingDays = (deadline: string): string => {
   const days = calculateRemainingDays(deadline);
 
   if (days === null) {
-    return 'Invalid date';
+    return '無効な日付';
   }
 
   if (days === 0) {
-    return 'Due today';
+    return '今日が期限';
   } else if (days === 1) {
-    return '1 day remaining';
+    return '残り1日';
   } else if (days > 1) {
-    return `${days} days remaining`;
+    return `残り${days}日`;
   } else if (days === -1) {
-    return '1 day overdue';
+    return '1日超過';
   } else {
-    return `${Math.abs(days)} days overdue`;
+    return `${Math.abs(days)}日超過`;
   }
 };

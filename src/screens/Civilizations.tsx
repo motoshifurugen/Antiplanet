@@ -102,17 +102,18 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     try {
       if (editingCivilization) {
         await updateCiv(editingCivilization.id, data);
-        showToast('Civilization updated successfully', 'success');
+        showToast('文明が正常に更新されました', 'success');
       } else {
         await createCiv(data as CreateCivilizationRequest);
-        showToast('Civilization created successfully', 'success');
+        showToast('文明が正常に作成されました', 'success');
       }
       deriveCivStates();
     } catch (error) {
+      console.error('Failed to submit civilization:', error);
       showToast(
-        editingCivilization 
-          ? 'Unable to save changes. Please check your connection and try again.' 
-          : 'Unable to create civilization. Please check your connection and try again.', 
+        editingCivilization
+          ? '変更を保存できませんでした。接続を確認して再試行してください。'
+          : '文明を作成できませんでした。接続を確認して再試行してください。',
         'error'
       );
       throw error; // Re-throw to prevent modal from closing
@@ -123,19 +124,20 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 
   const handleDeleteCivilization = (civilization: Civilization) => {
     Alert.alert(
-      'Delete Civilization',
-      `Are you sure you want to delete "${civilization.name}"? This action cannot be undone.`,
+      '文明を削除',
+      `"${civilization.name}"を削除してもよろしいですか？この操作は元に戻せません。`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'キャンセル', style: 'cancel' },
         {
-          text: 'Delete',
+          text: '削除',
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteCiv(civilization.id);
-              showToast('Civilization deleted successfully', 'success');
+              showToast('文明が正常に削除されました', 'success');
             } catch (error) {
-              showToast('Unable to delete civilization. Please check your connection and try again.', 'error');
+              console.error('Failed to delete civilization:', error);
+              showToast('文明を削除できませんでした。接続を確認して再試行してください。', 'error');
             }
           },
         },
@@ -161,26 +163,26 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
         </View>
       </View>
 
-      <Text style={styles.civilizationDetail}>Deadline: {formatDate(item.deadline)}</Text>
+      <Text style={styles.civilizationDetail}>期限: {formatDate(item.deadline)}</Text>
       <Text style={styles.civilizationDetail}>
-        Last Progress: {formatRelativeTime(item.lastProgressAt)}
+        最終進捗: {formatRelativeTime(item.lastProgressAt)}
       </Text>
       {item.purpose && <Text style={styles.civilizationPurpose}>{item.purpose}</Text>}
 
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.progressButton} onPress={() => handleLogProgress(item)}>
-          <Text style={styles.progressButtonText}>Log Progress</Text>
+          <Text style={styles.progressButtonText}>進捗を記録</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.editButton} onPress={() => handleEditCivilization(item)}>
-          <Text style={styles.editButtonText}>Edit</Text>
+          <Text style={styles.editButtonText}>編集</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => handleDeleteCivilization(item)}
         >
-          <Text style={styles.deleteButtonText}>Delete</Text>
+          <Text style={styles.deleteButtonText}>削除</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -188,12 +190,12 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateTitle}>🌱 Start Your First Civilization</Text>
+      <Text style={styles.emptyStateTitle}>🌱 最初の文明を始めましょう</Text>
       <Text style={styles.emptyStateSubtitle}>
-        Create civilizations to watch them grow, evolve, and thrive on your planet. Track their progress and see how they develop over time.
+        文明を作成して、惑星上で成長、進化、繁栄する様子を観察しましょう。進捗を追跡し、時間の経過とともにどのように発展するかを見てみてください。
       </Text>
       <TouchableOpacity style={styles.emptyStateButton} onPress={handleAddCivilization}>
-        <Text style={styles.emptyStateButtonText}>Create Civilization</Text>
+        <Text style={styles.emptyStateButtonText}>文明を作成</Text>
       </TouchableOpacity>
     </View>
   );
@@ -203,7 +205,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       <Screen>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading civilizations...</Text>
+          <Text style={styles.loadingText}>文明を読み込み中...</Text>
         </View>
         <Toast {...toast} onHide={hideToast} />
       </Screen>
@@ -214,9 +216,9 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     <Screen>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Civilizations</Text>
+                      <Text style={styles.title}>文明</Text>
           <TouchableOpacity style={styles.addButton} onPress={handleAddCivilization}>
-            <Text style={styles.addButtonText}>Add Civilization</Text>
+            <Text style={styles.addButtonText}>文明を追加</Text>
           </TouchableOpacity>
         </View>
 

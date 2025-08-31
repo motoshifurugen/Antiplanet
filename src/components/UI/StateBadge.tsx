@@ -41,12 +41,27 @@ export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
     }
   };
 
+  const getStateText = (civState: CivState) => {
+    switch (civState) {
+      case 'uninitialized':
+        return '未初期化';
+      case 'developing':
+        return '発展中';
+      case 'decaying':
+        return '衰退中';
+      case 'ocean':
+        return '海洋化';
+      default:
+        return civState.charAt(0).toUpperCase() + civState.slice(1);
+    }
+  };
+
   const stateStyle = getStateStyle(state);
 
   return (
     <View style={[styles.badge, { backgroundColor: stateStyle.backgroundColor }]}>
       <Text style={[styles.badgeText, { color: stateStyle.color }]}>
-        {state.charAt(0).toUpperCase() + state.slice(1)}
+        {getStateText(state)}
       </Text>
     </View>
   );

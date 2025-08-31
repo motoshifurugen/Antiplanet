@@ -91,7 +91,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       renderScene(newScene);
     } catch (error) {
       console.error('Failed to create 3D scene:', error);
-      showToast('Unable to load 3D planet view. Please restart the app.', 'error');
+      showToast('3D惑星ビューを読み込めませんでした。アプリを再起動してください。', 'error');
     }
   };
 
@@ -166,7 +166,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
     setProgressLoading(true);
     try {
       await logProgress(civilization.id);
-      showToast(`Progress recorded for ${civilization.name}`, 'success');
+      showToast(`${civilization.name}の進捗を記録しました`, 'success');
       
       // Update the scene markers after progress is recorded
       if (scene) {
@@ -175,7 +175,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       }
     } catch (error) {
       console.error('Failed to record progress:', error);
-      showToast('Unable to record progress. Please check your connection and try again.', 'error');
+      showToast('進捗を記録できませんでした。接続を確認して再試行してください。', 'error');
     } finally {
       setProgressLoading(false);
     }
@@ -195,9 +195,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       <View style={styles.container}>
         {civilizations.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>🌍 Your Planet Awaits</Text>
+            <Text style={styles.emptyTitle}>🌍 惑星が待っています</Text>
             <Text style={styles.emptySubtitle}>
-              Your planet is ready for life! Create your first civilization to see it appear as a glowing marker on the surface. You can rotate and zoom to explore your world.
+              惑星は生命の準備ができています！最初の文明を作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
             </Text>
           </View>
         ) : (

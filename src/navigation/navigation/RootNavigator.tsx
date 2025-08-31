@@ -28,16 +28,16 @@ export const RootNavigator: React.FC = () => {
           },
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Planet View (MVP)' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: '惑星ビュー' }} />
         <Stack.Screen
           name="Civilizations"
           component={CivilizationsScreen}
-          options={{ title: 'Civilizations' }}
+          options={{ title: '文明' }}
         />
         <Stack.Screen
           name="PlanetSettings"
           component={PlanetSettingsScreen}
-          options={{ title: 'Planet Settings' }}
+          options={{ title: '惑星設定' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

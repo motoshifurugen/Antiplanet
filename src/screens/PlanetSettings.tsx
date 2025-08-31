@@ -87,17 +87,17 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!goalTitle.trim()) {
-      newErrors.title = 'Goal title is required';
+      newErrors.title = '目標タイトルは必須です';
     }
 
     if (!deadline.trim()) {
-      newErrors.deadline = 'Deadline is required';
+      newErrors.deadline = '期限は必須です';
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
-      newErrors.deadline = 'Please use YYYY-MM-DD format';
+      newErrors.deadline = 'YYYY-MM-DD形式で入力してください';
     } else {
       const date = new Date(deadline);
       if (isNaN(date.getTime())) {
-        newErrors.deadline = 'Invalid date';
+        newErrors.deadline = '無効な日付です';
       }
     }
 
@@ -123,10 +123,10 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
 
       setOriginalTitle(goalTitle.trim());
       setOriginalDeadline(deadline);
-      showToast('Planet goal saved successfully', 'success');
+      showToast('惑星目標が正常に保存されました', 'success');
     } catch (error) {
       console.error('Failed to save planet goal:', error);
-      showToast('Unable to save planet goal. Please check your connection and try again.', 'error');
+      showToast('惑星目標を保存できませんでした。接続を確認して再試行してください。', 'error');
     } finally {
       setSaving(false);
     }
@@ -143,7 +143,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
       <Screen>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading planet goal...</Text>
+          <Text style={styles.loadingText}>惑星目標を読み込み中...</Text>
         </View>
         <Toast {...toast} onHide={hideToast} />
       </Screen>
@@ -153,12 +153,12 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
   return (
     <Screen>
       <View style={styles.container}>
-        <Text style={styles.title}>Planet Settings</Text>
-        <Text style={styles.subtitle}>Configure your planet's goals and timeline</Text>
+        <Text style={styles.title}>惑星設定</Text>
+        <Text style={styles.subtitle}>惑星の目標とタイムラインを設定</Text>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Goal Title *</Text>
+            <Text style={styles.label}>目標タイトル *</Text>
             <TextInput
               style={[styles.input, errors.title && styles.inputError]}
               value={goalTitle}
@@ -168,7 +168,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
                   setErrors(prev => ({ ...prev, title: '' }));
                 }
               }}
-              placeholder="Enter your planet's main goal"
+              placeholder="惑星の主要な目標を入力"
               placeholderTextColor={colors.placeholder}
               editable={!saving}
             />
@@ -176,7 +176,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Deadline (YYYY-MM-DD) *</Text>
+            <Text style={styles.label}>期限 (YYYY-MM-DD) *</Text>
             <TextInput
               style={[styles.input, errors.deadline && styles.inputError]}
               value={deadline}
@@ -203,7 +203,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
               disabled={!hasChanges() || saving}
             >
               <Text style={[styles.resetButtonText, !hasChanges() && styles.buttonTextDisabled]}>
-                Reset
+                リセット
               </Text>
             </TouchableOpacity>
 
@@ -216,7 +216,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text style={[styles.saveButtonText, !hasChanges() && styles.buttonTextDisabled]}>
-                  Save Goal
+                  目標を保存
                 </Text>
               )}
             </TouchableOpacity>

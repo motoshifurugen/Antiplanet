@@ -49,17 +49,17 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = '名前は必須です';
     }
 
     if (!deadline.trim()) {
-      newErrors.deadline = 'Deadline is required';
+      newErrors.deadline = '期限は必須です';
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
-      newErrors.deadline = 'Please use YYYY-MM-DD format';
+      newErrors.deadline = 'YYYY-MM-DD形式で入力してください';
     } else {
       const date = new Date(deadline);
       if (isNaN(date.getTime())) {
-        newErrors.deadline = 'Invalid date';
+        newErrors.deadline = '無効な日付です';
       }
     }
 
@@ -101,21 +101,21 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
       >
         <View style={styles.header}>
           <Text style={styles.title}>
-            {civilization ? 'Edit Civilization' : 'Add Civilization'}
+            {civilization ? '文明を編集' : '文明を追加'}
           </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>Cancel</Text>
+            <Text style={styles.closeButtonText}>キャンセル</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Name *</Text>
+            <Text style={styles.label}>名前 *</Text>
             <TextInput
               style={[styles.input, errors.name && styles.inputError]}
               value={name}
               onChangeText={setName}
-              placeholder="Enter civilization name"
+              placeholder="文明の名前を入力"
               placeholderTextColor={colors.placeholder}
               editable={!loading}
             />
@@ -123,7 +123,7 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Deadline (YYYY-MM-DD) *</Text>
+            <Text style={styles.label}>期限 (YYYY-MM-DD) *</Text>
             <TextInput
               style={[styles.input, errors.deadline && styles.inputError]}
               value={deadline}
@@ -136,12 +136,12 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Purpose (optional)</Text>
+            <Text style={styles.label}>目的 (任意)</Text>
             <TextInput
               style={styles.input}
               value={purpose}
               onChangeText={setPurpose}
-              placeholder="Describe the civilization's purpose"
+              placeholder="文明の目的を説明"
               placeholderTextColor={colors.placeholder}
               multiline
               numberOfLines={3}
@@ -155,7 +155,7 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
             disabled={loading}
           >
             <Text style={styles.submitButtonText}>
-              {loading ? 'Saving...' : civilization ? 'Update' : 'Create'}
+              {loading ? '保存中...' : civilization ? '更新' : '作成'}
             </Text>
           </TouchableOpacity>
         </View>
