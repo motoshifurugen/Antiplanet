@@ -4,6 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from '../../screens/Home';
 import { CivilizationsScreen } from '../../screens/Civilizations';
 import { PlanetSettingsScreen } from '../../screens/PlanetSettings';
+import { colors } from '../../theme/colors';
+import { typography } from '../../theme/typography';
+import { Icon } from '../../components/UI/Icon';
+import { spacing } from '../../theme/spacing';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -20,24 +24,45 @@ export const RootNavigator: React.FC = () => {
         initialRouteName="Home"
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#007AFF',
+            backgroundColor: colors.surface,
           },
-          headerTintColor: '#fff',
+          headerTintColor: colors.text,
           headerTitleStyle: {
-            fontWeight: 'bold',
+            ...typography.subheading,
+            color: colors.text,
           },
+          headerShadowVisible: true,
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: '惑星ビュー' }} />
+        <Stack.Screen 
+          name="Home" 
+          component={HomeScreen} 
+          options={{ 
+            title: '惑星ビュー',
+            headerRight: () => (
+              <Icon name="planet" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
+            ),
+          }} 
+        />
         <Stack.Screen
           name="Civilizations"
           component={CivilizationsScreen}
-          options={{ title: '文明' }}
+          options={{ 
+            title: '文明',
+            headerRight: () => (
+              <Icon name="civilizations" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
+            ),
+          }}
         />
         <Stack.Screen
           name="PlanetSettings"
           component={PlanetSettingsScreen}
-          options={{ title: '惑星設定' }}
+          options={{ 
+            title: '惑星設定',
+            headerRight: () => (
+              <Icon name="settings" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
+            ),
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>

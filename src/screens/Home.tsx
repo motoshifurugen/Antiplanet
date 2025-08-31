@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import {
   PanGestureHandler,
   PinchGestureHandler,
@@ -11,6 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../components/UI/Screen';
 import { Toast, ToastType } from '../components/UI/Toast';
+import { Icon } from '../components/UI/Icon';
 import { CivilizationBottomSheet } from '../components/CivilizationBottomSheet';
 import { useAppStore } from '../stores';
 import { Civilization } from '../types';
@@ -27,6 +28,10 @@ import {
 } from '../lib/three';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { ui } from '../theme/ui';
+import { animations, createAnimation } from '../theme/animations';
+import { iconSizes } from '../theme/icons';
 import { RootStackParamList } from '../navigation/navigation/RootNavigator';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -55,6 +60,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
   });
   const [viewDimensions, setViewDimensions] = useState({ width: 0, height: 0 });
 
+  // Animation values
+  const titleScale = useRef(new Animated.Value(0.8)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
+  const planetIconScale = useRef(new Animated.Value(0.5)).current;
+
   // Refs for gesture handling
   const lastPanRef = useRef({ x: 0, y: 0 });
   const lastScaleRef = useRef(1);
@@ -63,7 +73,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
   useFocusEffect(
     React.useCallback(() => {
       deriveCivStates();
-    }, [deriveCivStates])
+      
+      // Start entrance animations
+      Animated.parallel([
+        createAnimation('growth', titleScale),
+        createAnimation('fadeIn', subtitleOpacity),
+        createAnimation('growth', planetIconScale),
+      ]).start();
+    }, [deriveCivStates, titleScale, subtitleOpacity, planetIconScale])
   );
 
   // Update markers when civilizations change
@@ -195,10 +212,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       <View style={styles.container}>
         {civilizations.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>🌍 惑星が待っています</Text>
-            <Text style={styles.emptySubtitle}>
+            <Animated.View 
+              style={[
+                styles.planetIconContainer,
+                { transform: [{ scale: planetIconScale }] }
+              ]}
+            >
+              <Icon name="planet" size="xxl" color={colors.primary} />
+            </Animated.View>
+            <Animated.Text 
+              style={[
+                styles.emptyTitle,
+                { transform: [{ scale: titleScale }] }
+              ]}
+            >
+              惑星が待っています
+            </Animated.Text>
+            <Animated.Text 
+              style={[
+                styles.emptySubtitle,
+                { opacity: subtitleOpacity }
+              ]}
+            >
               惑星は生命の準備ができています！最初の文明を作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
-            </Text>
+            </Animated.Text>
           </View>
         ) : (
           <TapGestureHandler onGestureEvent={handleTapGestureEvent}>
@@ -240,6 +277,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   glView: {
     flex: 1,
@@ -249,16 +287,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
+    backgroundColor: colors.background,
+  },
+  planetIconContainer: {
+    marginBottom: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.heading,
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,

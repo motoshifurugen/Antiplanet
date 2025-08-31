@@ -1,6 +1,6 @@
 // Modal for adding/editing civilizations
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -10,10 +10,17 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { Civilization, CreateCivilizationRequest, UpdateCivilizationRequest } from '../types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { ui } from '../theme/ui';
+import { animations, createAnimation } from '../theme/animations';
+import { Screen } from '../components/UI/Screen';
+import { Toast, ToastType } from '../components/UI/Toast';
+import { Icon } from '../components/UI/Icon';
 
 interface CivilizationModalProps {
   visible: boolean;
@@ -34,6 +41,11 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
   const [deadline, setDeadline] = useState('');
   const [purpose, setPurpose] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
   // Reset form when modal opens/closes or civilization changes
   useEffect(() => {
@@ -42,8 +54,20 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
       setDeadline(civilization?.deadline || '');
       setPurpose(civilization?.purpose || '');
       setErrors({});
+      
+      // Start entrance animation
+      Animated.parallel([
+        createAnimation('fadeIn', fadeAnim),
+        createAnimation('slideUp', slideAnim),
+        createAnimation('growth', scaleAnim),
+      ]).start();
+    } else {
+      // Reset animation values
+      fadeAnim.setValue(0);
+      slideAnim.setValue(300);
+      scaleAnim.setValue(0.8);
     }
-  }, [visible, civilization]);
+  }, [visible, civilization, fadeAnim, slideAnim, scaleAnim]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -91,83 +115,125 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="none"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
+      transparent
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <Animated.View 
+        style={[
+          styles.overlay,
+          { opacity: fadeAnim }
+        ]}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {civilization ? '文明を編集' : '文明を追加'}
-          </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>キャンセル</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>名前 *</Text>
-            <TextInput
-              style={[styles.input, errors.name && styles.inputError]}
-              value={name}
-              onChangeText={setName}
-              placeholder="文明の名前を入力"
-              placeholderTextColor={colors.placeholder}
-              editable={!loading}
-            />
-            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>期限 (YYYY-MM-DD) *</Text>
-            <TextInput
-              style={[styles.input, errors.deadline && styles.inputError]}
-              value={deadline}
-              onChangeText={setDeadline}
-              placeholder="2024-12-31"
-              placeholderTextColor={colors.placeholder}
-              editable={!loading}
-            />
-            {errors.deadline && <Text style={styles.errorText}>{errors.deadline}</Text>}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>目的 (任意)</Text>
-            <TextInput
-              style={styles.input}
-              value={purpose}
-              onChangeText={setPurpose}
-              placeholder="文明の目的を説明"
-              placeholderTextColor={colors.placeholder}
-              multiline
-              numberOfLines={3}
-              editable={!loading}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Animated.View 
+            style={[
+              styles.modalContent,
+              {
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim }
+                ]
+              }
+            ]}
           >
-            <Text style={styles.submitButtonText}>
-              {loading ? '保存中...' : civilization ? '更新' : '作成'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+            <View style={styles.header}>
+              <Text style={styles.title}>
+                {civilization ? '文明を編集' : '文明を追加'}
+              </Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Icon name="edit" size="sm" color={colors.primary} style={styles.closeButtonIcon} />
+                <Text style={styles.closeButtonText}>キャンセル</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>名前 *</Text>
+                <TextInput
+                  style={[styles.input, errors.name && styles.inputError]}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="文明の名前を入力"
+                  placeholderTextColor={colors.placeholder}
+                  editable={!loading}
+                />
+                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>期限 (YYYY-MM-DD) *</Text>
+                <TextInput
+                  style={[styles.input, errors.deadline && styles.inputError]}
+                  value={deadline}
+                  onChangeText={setDeadline}
+                  placeholder="2024-12-31"
+                  placeholderTextColor={colors.placeholder}
+                  editable={!loading}
+                />
+                {errors.deadline && <Text style={styles.errorText}>{errors.deadline}</Text>}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>目的 (任意)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={purpose}
+                  onChangeText={setPurpose}
+                  placeholder="文明の目的を説明"
+                  placeholderTextColor={colors.placeholder}
+                  multiline
+                  numberOfLines={3}
+                  editable={!loading}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                <Icon 
+                  name={loading ? 'clock' : civilization ? 'save' : 'add'} 
+                  size="sm" 
+                  color="#FFFFFF" 
+                  style={styles.submitButtonIcon} 
+                />
+                <Text style={styles.submitButtonText}>
+                  {loading ? '保存中...' : civilization ? '更新' : '作成'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    ...ui.modal,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
   },
   header: {
     flexDirection: 'row',
@@ -175,20 +241,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.divider,
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...typography.subheading,
     color: colors.text,
   },
   closeButton: {
     padding: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  closeButtonIcon: {
+    marginRight: spacing.xs,
   },
   closeButtonText: {
+    ...typography.button,
     color: colors.primary,
-    fontSize: 16,
-    fontWeight: '500',
   },
   form: {
     flex: 1,
@@ -198,41 +268,42 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: 16,
+    ...typography.body,
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: spacing.md,
-    fontSize: 16,
-    backgroundColor: colors.surface,
+    ...ui.input,
+    ...typography.body,
     color: colors.text,
   },
   inputError: {
     borderColor: colors.error,
+    ...ui.inputError,
   },
   errorText: {
     color: colors.error,
-    fontSize: 12,
+    ...typography.small,
     marginTop: spacing.xs / 2,
   },
   submitButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
+    ...ui.button.primary,
     marginTop: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  submitButtonIcon: {
+    marginRight: spacing.xs,
   },
   submitButtonDisabled: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.disabled,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitButtonText: {
+    ...typography.button,
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

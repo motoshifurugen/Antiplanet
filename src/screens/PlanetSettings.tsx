@@ -11,11 +11,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Screen } from '../components/UI/Screen';
 import { Toast, ToastType } from '../components/UI/Toast';
+import { Icon } from '../components/UI/Icon';
 import { useAppStore } from '../stores';
 import { formatRemainingDays } from '../lib/dateUtils';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 import { RootStackParamList } from '../navigation/navigation/RootNavigator';
+import { ui } from '../theme/ui';
 
 type PlanetSettingsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -202,6 +205,7 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
               onPress={handleReset}
               disabled={!hasChanges() || saving}
             >
+              <Icon name="edit" size="sm" color={colors.text} style={styles.buttonIcon} />
               <Text style={[styles.resetButtonText, !hasChanges() && styles.buttonTextDisabled]}>
                 リセット
               </Text>
@@ -213,11 +217,14 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
               disabled={!hasChanges() || saving}
             >
               {saving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Icon name="clock" size="sm" color="#FFFFFF" />
               ) : (
-                <Text style={[styles.saveButtonText, !hasChanges() && styles.buttonTextDisabled]}>
-                  目標を保存
-                </Text>
+                <>
+                  <Icon name="save" size="sm" color="#FFFFFF" style={styles.buttonIcon} />
+                  <Text style={[styles.saveButtonText, !hasChanges() && styles.buttonTextDisabled]}>
+                    目標を保存
+                  </Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
@@ -232,52 +239,49 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.heading,
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
   form: {
     flex: 1,
+    padding: spacing.md,
   },
   inputGroup: {
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: 16,
+    ...typography.body,
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: spacing.md,
-    fontSize: 16,
-    backgroundColor: colors.surface,
+    ...ui.input,
     color: colors.text,
   },
   inputError: {
+    ...ui.inputError,
     borderColor: colors.error,
   },
   errorText: {
     color: colors.error,
-    fontSize: 12,
+    ...typography.small,
     marginTop: spacing.xs / 2,
   },
   helperText: {
-    color: colors.textSecondary,
-    fontSize: 12,
+    color: colors.textTertiary,
+    ...typography.small,
     marginTop: spacing.xs / 2,
     fontStyle: 'italic',
   },
@@ -287,44 +291,49 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   resetButton: {
+    ...ui.button.outline,
     flex: 1,
-    backgroundColor: colors.border,
-    padding: spacing.md,
-    borderRadius: 8,
+    borderColor: colors.border,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
   },
   resetButtonText: {
+    ...typography.button,
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
   },
   saveButton: {
+    ...ui.button.primary,
     flex: 2,
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
   },
   saveButtonText: {
+    ...typography.button,
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   buttonDisabled: {
-    backgroundColor: colors.border,
-    opacity: 0.6,
+    backgroundColor: colors.disabled,
+    borderColor: colors.disabled,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   buttonTextDisabled: {
-    color: colors.textSecondary,
+    color: colors.textTertiary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
   loadingText: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.textSecondary,
     marginTop: spacing.md,
+  },
+  buttonIcon: {
+    marginRight: spacing.xs,
   },
 });

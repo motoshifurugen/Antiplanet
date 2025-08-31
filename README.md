@@ -68,12 +68,13 @@ Antiplanetは惑星と文明のライフサイクルをシミュレートするM
 - ✅ **State Machine**: 文明状態の決定論的評価システム実装済み
 - ✅ **Three.js**: 完全実装済み（3D惑星・マーカー・ジェスチャー操作）
 - ✅ **設定**: すべてのコア機能実装済み
+- ✅ **React Native Reanimated**: アニメーションシステム用に設定済み
 
 ## セットアップと実行
 
 ### 前提条件
 
-- Node.js (推奨: v18以上)
+- **Node.js**: v20 LTS推奨（Expo SDK 53との互換性のため）
 - npm または pnpm
 - Expo CLI（グローバルインストール推奨）
 
@@ -99,6 +100,20 @@ FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
 FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 FIREBASE_APP_ID=your_app_id
 ```
+
+### トラブルシューティング
+
+#### React Native Reanimated エラー
+もし「[Reanimated] Babel plugin exception」エラーが発生する場合：
+
+1. **Node.js バージョンの確認**: v20 LTSを使用していることを確認
+2. **キャッシュのクリア**: `npx expo start --clear` で起動
+3. **依存関係の再インストール**: `rm -rf node_modules && npm install`
+
+#### アニメーション設定
+- アニメーションは `src/theme/animations.ts` で一元管理
+- Easing関数は React Native の標準Easingを使用
+- カスタムアニメーションは `createAnimation()` 関数で作成
 
 **セットアップ手順**:
 1. Firebase Console（https://console.firebase.google.com）でプロジェクトを作成

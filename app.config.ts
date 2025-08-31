@@ -30,7 +30,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: 'single',
     favicon: './assets/images/favicon.png',
   },
-  plugins: ['expo-asset'],
+  plugins: [
+    'expo-asset',
+  ],
   extra: {
     firebase: {
       apiKey: process.env.FIREBASE_API_KEY,

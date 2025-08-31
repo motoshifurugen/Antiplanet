@@ -14,13 +14,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Screen } from '../components/UI/Screen';
 import { StateBadge } from '../components/UI/StateBadge';
 import { Toast, ToastType } from '../components/UI/Toast';
+import { Icon } from '../components/UI/Icon';
 import { CivilizationModal } from '../components/CivilizationModal';
 import { useAppStore } from '../stores';
 import { Civilization, CreateCivilizationRequest, UpdateCivilizationRequest } from '../types';
 import { formatRelativeTime, formatDate } from '../lib/dateUtils';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 import { RootStackParamList } from '../navigation/navigation/RootNavigator';
+import { ui } from '../theme/ui';
 
 type CivilizationsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -190,7 +193,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateTitle}>🌱 最初の文明を始めましょう</Text>
+      <View style={styles.emptyStateIconContainer}>
+        <Icon name="civilizations" size="xl" color={colors.primary} />
+      </View>
+      <Text style={styles.emptyStateTitle}>最初の文明を始めましょう</Text>
       <Text style={styles.emptyStateSubtitle}>
         文明を作成して、惑星上で成長、進化、繁栄する様子を観察しましょう。進捗を追跡し、時間の経過とともにどのように発展するかを見てみてください。
       </Text>
@@ -218,6 +224,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
         <View style={styles.header}>
                       <Text style={styles.title}>文明</Text>
           <TouchableOpacity style={styles.addButton} onPress={handleAddCivilization}>
+            <Icon name="add" size="sm" color="#FFFFFF" style={styles.addButtonIcon} />
             <Text style={styles.addButtonText}>文明を追加</Text>
           </TouchableOpacity>
         </View>
@@ -252,27 +259,36 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    ...ui.card,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    ...typography.heading,
     color: colors.text,
   },
   addButton: {
-    backgroundColor: colors.success,
+    ...ui.button.success,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  addButtonIcon: {
+    marginRight: spacing.xs,
   },
   addButtonText: {
+    ...typography.caption,
     color: '#FFFFFF',
-    fontSize: 14,
     fontWeight: '600',
   },
   listContainer: {
@@ -282,12 +298,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   civilizationCard: {
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: 8,
+    ...ui.card,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -302,19 +314,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   civilizationName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    ...typography.subheading,
     color: colors.text,
     flex: 1,
   },
   civilizationDetail: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.xs / 2,
   },
   civilizationPurpose: {
-    fontSize: 14,
-    color: colors.text,
+    ...typography.caption,
+    color: colors.textTertiary,
     marginTop: spacing.sm,
     fontStyle: 'italic',
   },
@@ -324,41 +335,38 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   progressButton: {
-    backgroundColor: colors.primary,
+    ...ui.button.primary,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 4,
     flex: 1,
   },
   progressButtonText: {
+    ...typography.small,
     color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
   editButton: {
-    backgroundColor: colors.warning,
+    ...ui.button.warning,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 4,
     flex: 1,
   },
   editButtonText: {
+    ...typography.small,
     color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
   deleteButton: {
-    backgroundColor: colors.error,
+    ...ui.button.error,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 4,
     flex: 1,
   },
   deleteButtonText: {
+    ...typography.small,
     color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -368,38 +376,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
   },
+  emptyStateIconContainer: {
+    marginBottom: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...typography.subheading,
     color: colors.text,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   emptyStateSubtitle: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.textSecondary,
     marginBottom: spacing.xl,
     textAlign: 'center',
     lineHeight: 24,
   },
   emptyStateButton: {
-    backgroundColor: colors.primary,
+    ...ui.button.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderRadius: 8,
   },
   emptyStateButtonText: {
+    ...typography.button,
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
   loadingText: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.textSecondary,
     marginTop: spacing.md,
   },

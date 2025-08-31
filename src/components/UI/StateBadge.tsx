@@ -1,16 +1,31 @@
 // State badge component for civilization states
 
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { CivState } from '../../types';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
+import { ui } from '../../theme/ui';
+import { animations, createAnimation } from '../../theme/animations';
+import { Icon } from './Icon';
 
 interface StateBadgeProps {
   state: CivState;
 }
 
 export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Animate badge appearance with growth effect
+    Animated.parallel([
+      createAnimation('growth', scaleAnim),
+      createAnimation('fadeIn', opacityAnim),
+    ]).start();
+  }, [state, scaleAnim, opacityAnim]);
+
   const getStateStyle = (civState: CivState) => {
     switch (civState) {
       case 'uninitialized':
@@ -41,6 +56,21 @@ export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
     }
   };
 
+  const getStateIcon = (civState: CivState) => {
+    switch (civState) {
+      case 'uninitialized':
+        return 'uninitialized';
+      case 'developing':
+        return 'developing';
+      case 'decaying':
+        return 'decaying';
+      case 'ocean':
+        return 'ocean';
+      default:
+        return 'uninitialized';
+    }
+  };
+
   const getStateText = (civState: CivState) => {
     switch (civState) {
       case 'uninitialized':
@@ -57,25 +87,45 @@ export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
   };
 
   const stateStyle = getStateStyle(state);
+  const stateIcon = getStateIcon(state);
 
   return (
-    <View style={[styles.badge, { backgroundColor: stateStyle.backgroundColor }]}>
+    <Animated.View 
+      style={[
+        styles.badge, 
+        { 
+          backgroundColor: stateStyle.backgroundColor,
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
+        }
+      ]}
+    >
+      <Icon 
+        name={stateIcon} 
+        size="xs" 
+        color={stateStyle.color}
+        style={styles.badgeIcon}
+      />
       <Text style={[styles.badgeText, { color: stateStyle.color }]}>
         {getStateText(state)}
       </Text>
-    </View>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-    borderRadius: 12,
+    ...ui.stateBadge,
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 2,
+  },
+  badgeIcon: {
+    marginRight: spacing.xs / 2,
   },
   badgeText: {
-    fontSize: 12,
+    ...typography.small,
     fontWeight: '600',
     textTransform: 'capitalize',
   },

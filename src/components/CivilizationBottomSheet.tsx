@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 import { Civilization } from '../types';
 import { StateBadge } from './UI/StateBadge';
+import { Icon } from './UI/Icon';
 import { formatRelativeTime, formatDate } from '../lib/dateUtils';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { ui } from '../theme/ui';
 
 interface CivilizationBottomSheetProps {
   visible: boolean;
@@ -95,13 +98,17 @@ export const CivilizationBottomSheet: React.FC<CivilizationBottomSheetProps> = (
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Icon name="clock" size="sm" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.progressButtonText}>進捗を記録</Text>
+                  <>
+                    <Icon name="progress" size="sm" color="#FFFFFF" style={styles.buttonIcon} />
+                    <Text style={styles.progressButtonText}>進捗を記録</Text>
+                  </>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <Icon name="edit" size="sm" color={colors.text} style={styles.buttonIcon} />
                 <Text style={styles.closeButtonText}>閉じる</Text>
               </TouchableOpacity>
             </View>
@@ -115,15 +122,16 @@ export const CivilizationBottomSheet: React.FC<CivilizationBottomSheetProps> = (
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.modalBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     minHeight: 200,
     maxHeight: '50%',
+    ...ui.modal,
   },
   content: {
     padding: spacing.lg,
@@ -143,8 +151,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   name: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...typography.subheading,
     color: colors.text,
     flex: 1,
   },
@@ -156,13 +163,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   infoLabel: {
-    fontSize: 14,
+    ...typography.caption,
     fontWeight: '600',
     color: colors.textSecondary,
     width: 100,
   },
   infoValue: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.text,
     flex: 1,
   },
@@ -171,31 +178,34 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   progressButton: {
+    ...ui.button.primary,
     flex: 2,
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
   },
   progressButtonText: {
+    ...typography.button,
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  },
+  buttonIcon: {
+    marginRight: spacing.xs,
   },
   closeButton: {
+    ...ui.button.ghost,
     flex: 1,
-    backgroundColor: colors.border,
-    padding: spacing.md,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
   },
   closeButtonText: {
+    ...typography.button,
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
   },
   buttonDisabled: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.disabled,
     opacity: 0.6,
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });
