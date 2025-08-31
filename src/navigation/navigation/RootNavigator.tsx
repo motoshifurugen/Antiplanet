@@ -8,6 +8,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { Icon } from '../../components/UI/Icon';
 import { spacing } from '../../theme/spacing';
+import { useAppStore } from '../../stores';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -18,6 +19,11 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
+  const { planetGoal } = useAppStore();
+  
+  // Tutorial mode detection
+  const isTutorial = !planetGoal || !planetGoal.title || !planetGoal.deadline;
+
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -39,7 +45,8 @@ export const RootNavigator: React.FC = () => {
           component={HomeScreen} 
           options={{ 
             title: '惑星ビュー',
-            headerRight: () => (
+            headerShown: !isTutorial,
+            headerRight: isTutorial ? undefined : () => (
               <Icon name="planet" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
             ),
           }} 

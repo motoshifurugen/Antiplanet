@@ -105,10 +105,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     try {
       if (editingCivilization) {
         await updateCiv(editingCivilization.id, data);
-        showToast('文明が正常に更新されました', 'success');
+        showToast('挑戦が正常に更新されました', 'success');
       } else {
         await createCiv(data as CreateCivilizationRequest);
-        showToast('文明が正常に作成されました', 'success');
+        showToast('挑戦が正常に作成されました', 'success');
       }
       deriveCivStates();
     } catch (error) {
@@ -116,7 +116,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       showToast(
         editingCivilization
           ? '変更を保存できませんでした。接続を確認して再試行してください。'
-          : '文明を作成できませんでした。接続を確認して再試行してください。',
+          : '挑戦を作成できませんでした。接続を確認して再試行してください。',
         'error'
       );
       throw error; // Re-throw to prevent modal from closing
@@ -127,7 +127,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 
   const handleDeleteCivilization = (civilization: Civilization) => {
     Alert.alert(
-      '文明を削除',
+      '挑戦を削除',
       `"${civilization.name}"を削除してもよろしいですか？この操作は元に戻せません。`,
       [
         { text: 'キャンセル', style: 'cancel' },
@@ -137,10 +137,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
           onPress: async () => {
             try {
               await deleteCiv(civilization.id);
-              showToast('文明が正常に削除されました', 'success');
+              showToast('挑戦が正常に削除されました', 'success');
             } catch (error) {
               console.error('Failed to delete civilization:', error);
-              showToast('文明を削除できませんでした。接続を確認して再試行してください。', 'error');
+              showToast('挑戦を削除できませんでした。接続を確認して再試行してください。', 'error');
             }
           },
         },
@@ -168,13 +168,13 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
 
       <Text style={styles.civilizationDetail}>期限: {formatDate(item.deadline)}</Text>
       <Text style={styles.civilizationDetail}>
-        最終進捗: {formatRelativeTime(item.lastProgressAt)}
+        最終成長ログ: {formatRelativeTime(item.lastProgressAt)}
       </Text>
       {item.purpose && <Text style={styles.civilizationPurpose}>{item.purpose}</Text>}
 
       <View style={styles.actionButtons}>
         <TouchableOpacity style={styles.progressButton} onPress={() => handleLogProgress(item)}>
-          <Text style={styles.progressButtonText}>進捗を記録</Text>
+          <Text style={styles.progressButtonText}>成長ログを記録</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.editButton} onPress={() => handleEditCivilization(item)}>
@@ -196,13 +196,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       <View style={styles.emptyStateIconContainer}>
         <Icon name="civilizations" size="xl" color={colors.primary} />
       </View>
-      <Text style={styles.emptyStateTitle}>最初の文明を始めましょう</Text>
+      <Text style={styles.emptyStateTitle}>まだ登録がありません</Text>
       <Text style={styles.emptyStateSubtitle}>
-        文明を作成して、惑星上で成長、進化、繁栄する様子を観察しましょう。進捗を追跡し、時間の経過とともにどのように発展するかを見てみてください。
+        まずは1つ追加しましょう。挑戦を登録すると、成長ログを追跡できます。
       </Text>
-      <TouchableOpacity style={styles.emptyStateButton} onPress={handleAddCivilization}>
-        <Text style={styles.emptyStateButtonText}>文明を作成</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -211,7 +208,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       <Screen>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>文明を読み込み中...</Text>
+          <Text style={styles.loadingText}>やりたいことを読み込み中...</Text>
         </View>
         <Toast {...toast} onHide={hideToast} />
       </Screen>
@@ -222,10 +219,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     <Screen>
       <View style={styles.container}>
         <View style={styles.header}>
-                      <Text style={styles.title}>文明</Text>
+          <Text style={styles.title}>挑戦</Text>
           <TouchableOpacity style={styles.addButton} onPress={handleAddCivilization}>
             <Icon name="add" size="sm" color="#FFFFFF" style={styles.addButtonIcon} />
-            <Text style={styles.addButtonText}>文明を追加</Text>
+            <Text style={styles.addButtonText}>挑戦を追加</Text>
           </TouchableOpacity>
         </View>
 
@@ -262,14 +259,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
+    ...ui.card,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    ...ui.card,
   },
   title: {
     ...typography.heading,
@@ -393,15 +387,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
     textAlign: 'center',
     lineHeight: 24,
-  },
-  emptyStateButton: {
-    ...ui.button.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  emptyStateButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,

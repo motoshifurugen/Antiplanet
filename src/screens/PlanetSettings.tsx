@@ -6,6 +6,11 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ActionSheetIOS,
+  Alert,
+  Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -36,30 +41,66 @@ interface ToastState {
 }
 
 export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
-  navigation: _navigation,
+  navigation,
 }) => {
-  const { planetGoal, loading, loadPlanetGoal, savePlanetGoal } = useAppStore();
+  const { planetGoal, loading, loadPlanetGoal, savePlanetGoal, civilizations } = useAppStore();
 
   const [goalTitle, setGoalTitle] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [originalTitle, setOriginalTitle] = useState('');
   const [originalDeadline, setOriginalDeadline] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [toast, setToast] = useState<ToastState>({
     visible: false,
     message: '',
     type: 'info',
   });
 
+  // Generate year options (current year + 10 years)
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i <= currentYear + 10; i++) {
+      years.push(i);
+    }
+    return years;
+  };
+
+  // Generate month options (1-12)
+  const generateMonthOptions = () => {
+    return Array.from({ length: 12 }, (_, i) => i + 1);
+  };
+
+  // Generate day options based on selected year and month
+  const generateDayOptions = () => {
+    const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  };
+
+  // Update deadline string when year, month, or day changes
+  useEffect(() => {
+    const monthStr = selectedMonth.toString().padStart(2, '0');
+    const dayStr = selectedDay.toString().padStart(2, '0');
+    const newDeadline = `${selectedYear}-${monthStr}-${dayStr}`;
+    setDeadline(newDeadline);
+  }, [selectedYear, selectedMonth, selectedDay]);
+
   // Load planet goal when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      loadPlanetGoal().catch(error => {
-        console.error('Failed to load planet goal:', error);
-        showToast('Failed to load planet goal', 'error');
-      });
-    }, [loadPlanetGoal])
+      // Only load if we don't have data and we're not currently loading
+      if (!planetGoal && !loading) {
+        loadPlanetGoal().catch(error => {
+          console.error('Failed to load planet goal:', error);
+          showToast('Failed to load planet goal', 'error');
+        });
+      }
+    }, [loadPlanetGoal, planetGoal, loading])
   );
 
   // Update form fields when planet goal changes
@@ -69,11 +110,29 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
       setDeadline(planetGoal.deadline);
       setOriginalTitle(planetGoal.title);
       setOriginalDeadline(planetGoal.deadline);
+      
+      // Parse deadline and set picker values
+      if (planetGoal.deadline) {
+        const [year, month, day] = planetGoal.deadline.split('-').map(Number);
+        if (year && month && day) {
+          setSelectedYear(year);
+          setSelectedMonth(month);
+          setSelectedDay(day);
+        }
+      }
+      setIsInitialized(true);
     } else {
       setGoalTitle('');
       setDeadline('');
       setOriginalTitle('');
       setOriginalDeadline('');
+      
+      // Reset to current date
+      const now = new Date();
+      setSelectedYear(now.getFullYear());
+      setSelectedMonth(now.getMonth() + 1);
+      setSelectedDay(now.getDate());
+      setIsInitialized(true);
     }
     setErrors({}); // Clear errors when loading new data
   }, [planetGoal]);
@@ -96,11 +155,18 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
     if (!deadline.trim()) {
       newErrors.deadline = '期限は必須です';
     } else if (!/^\d{4}-\d{2}-\d{2}$/.test(deadline)) {
-      newErrors.deadline = 'YYYY-MM-DD形式で入力してください';
+      newErrors.deadline = '無効な日付形式です';
     } else {
       const date = new Date(deadline);
       if (isNaN(date.getTime())) {
         newErrors.deadline = '無効な日付です';
+      }
+      
+      // Check if date is in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (date < today) {
+        newErrors.deadline = '期限は今日以降の日付を選択してください';
       }
     }
 
@@ -127,6 +193,14 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
       setOriginalTitle(goalTitle.trim());
       setOriginalDeadline(deadline);
       showToast('惑星目標が正常に保存されました', 'success');
+      
+      // Check if this is the first time setting up the planet and no civilizations exist
+      if (civilizations.length === 0) {
+        // Navigate to civilizations screen after a short delay to show the toast
+        setTimeout(() => {
+          navigation.navigate('Civilizations');
+        }, 1500);
+      }
     } catch (error) {
       console.error('Failed to save planet goal:', error);
       showToast('惑星目標を保存できませんでした。接続を確認して再試行してください。', 'error');
@@ -141,12 +215,173 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
     setErrors({});
   };
 
-  if (loading && !planetGoal) {
+  const showYearPicker = () => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let i = currentYear; i <= currentYear + 10; i++) {
+      years.push(i);
+    }
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...years.map(year => year.toString()), 'キャンセル'],
+          cancelButtonIndex: years.length,
+          title: '年を選択',
+          message: '目標の期限年を選択してください',
+        },
+        (buttonIndex) => {
+          if (buttonIndex !== years.length) {
+            setSelectedYear(years[buttonIndex]);
+            if (errors.deadline) {
+              setErrors(prev => ({ ...prev, deadline: '' }));
+            }
+          }
+        }
+      );
+    } else {
+      // Android: Alert with buttons
+      const yearOptions = years.map(year => ({
+        text: year.toString(),
+        onPress: () => {
+          setSelectedYear(year);
+          if (errors.deadline) {
+            setErrors(prev => ({ ...prev, deadline: '' }));
+          }
+        },
+      }));
+
+      Alert.alert(
+        '年を選択',
+        '目標の期限年を選択してください',
+        [
+          ...yearOptions,
+          { text: 'キャンセル', style: 'cancel' as const },
+        ]
+      );
+    }
+  };
+
+  const showMonthPicker = () => {
+    const months = [
+      '1月', '2月', '3月', '4月', '5月', '6月',
+      '7月', '8月', '9月', '10月', '11月', '12月'
+    ];
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...months, 'キャンセル'],
+          cancelButtonIndex: months.length,
+          title: '月を選択',
+          message: '目標の期限月を選択してください',
+        },
+        (buttonIndex) => {
+          if (buttonIndex !== months.length) {
+            const newMonth = buttonIndex + 1;
+            setSelectedMonth(newMonth);
+            setSelectedDay(1); // Reset day when month changes
+            if (errors.deadline) {
+              setErrors(prev => ({ ...prev, deadline: '' }));
+            }
+          }
+        }
+      );
+    } else {
+      // Android: Alert with buttons
+      const monthOptions = months.map((month, index) => ({
+        text: month,
+        onPress: () => {
+          const newMonth = index + 1;
+          setSelectedMonth(newMonth);
+          setSelectedDay(1); // Reset day when month changes
+          if (errors.deadline) {
+            setErrors(prev => ({ ...prev, deadline: '' }));
+          }
+        },
+      }));
+
+      Alert.alert(
+        '月を選択',
+        '目標の期限月を選択してください',
+        [
+          ...monthOptions,
+          { text: 'キャンセル', style: 'cancel' as const },
+        ]
+      );
+    }
+  };
+
+  const showDayPicker = () => {
+    const maxDays = new Date(selectedYear, selectedMonth, 0).getDate();
+    const days: number[] = [];
+    for (let i = 1; i <= maxDays; i++) {
+      days.push(i);
+    }
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...days.map(day => day.toString()), 'キャンセル'],
+          cancelButtonIndex: days.length,
+          title: '日を選択',
+          message: '目標の期限日を選択してください',
+        },
+        (buttonIndex) => {
+          if (buttonIndex !== days.length) {
+            setSelectedDay(days[buttonIndex]);
+            if (errors.deadline) {
+              setErrors(prev => ({ ...prev, deadline: '' }));
+            }
+          }
+        }
+      );
+    } else {
+      // Android: Alert with buttons (grouped by 10s for better UX)
+      const dayGroups: number[][] = [];
+      for (let i = 0; i < days.length; i += 10) {
+        dayGroups.push(days.slice(i, i + 10));
+      }
+
+      const showDayGroup = (dayGroup: number[], startIndex: number) => {
+        const dayOptions = dayGroup.map(day => ({
+          text: day.toString(),
+          onPress: () => {
+            setSelectedDay(day);
+            if (errors.deadline) {
+              setErrors(prev => ({ ...prev, deadline: '' }));
+            }
+          },
+        }));
+
+        const buttons = [
+          ...dayOptions,
+          { text: '前の10件', onPress: () => showDayGroup(dayGroups[startIndex - 1] || [], startIndex - 1) },
+          { text: '次の10件', onPress: () => showDayGroup(dayGroups[startIndex + 1] || [], startIndex + 1) },
+          { text: 'キャンセル', style: 'cancel' as const },
+        ].filter((_, index) => {
+          if (startIndex === 0 && index === dayOptions.length + 1) return false; // Hide "前の10件" for first group
+          if (startIndex === dayGroups.length - 1 && index === dayOptions.length + 2) return false; // Hide "次の10件" for last group
+          return true;
+        });
+
+        Alert.alert(
+          '日を選択',
+          '目標の期限日を選択してください',
+          buttons
+        );
+      };
+
+      showDayGroup(dayGroups[0], 0);
+    }
+  };
+
+  if (loading && !planetGoal && !isInitialized) {
     return (
       <Screen>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>惑星目標を読み込み中...</Text>
+          <Text style={styles.loadingText}>星のビジョンを読み込み中...</Text>
         </View>
         <Toast {...toast} onHide={hideToast} />
       </Screen>
@@ -155,83 +390,115 @@ export const PlanetSettingsScreen: React.FC<PlanetSettingsScreenProps> = ({
 
   return (
     <Screen>
-      <View style={styles.container}>
-        <Text style={styles.title}>惑星設定</Text>
-        <Text style={styles.subtitle}>惑星の目標とタイムラインを設定</Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <Text style={styles.title}>星のビジョンを決める</Text>
+          <Text style={styles.subtitle}>このビジョンがあなたのAntiplanetを導きます</Text>
 
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>目標タイトル *</Text>
-            <TextInput
-              style={[styles.input, errors.title && styles.inputError]}
-              value={goalTitle}
-              onChangeText={text => {
-                setGoalTitle(text);
-                if (errors.title) {
-                  setErrors(prev => ({ ...prev, title: '' }));
-                }
-              }}
-              placeholder="惑星の主要な目標を入力"
-              placeholderTextColor={colors.placeholder}
-              editable={!saving}
-            />
-            {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
-          </View>
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>ビジョン *</Text>
+              <TextInput
+                style={[styles.input, errors.title && styles.inputError]}
+                value={goalTitle}
+                onChangeText={text => {
+                  setGoalTitle(text);
+                  if (errors.title) {
+                    setErrors(prev => ({ ...prev, title: '' }));
+                  }
+                }}
+                placeholder="2026年までに海外で働く"
+                placeholderTextColor={colors.placeholder}
+                editable={!saving}
+              />
+              {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>期限 (YYYY-MM-DD) *</Text>
-            <TextInput
-              style={[styles.input, errors.deadline && styles.inputError]}
-              value={deadline}
-              onChangeText={text => {
-                setDeadline(text);
-                if (errors.deadline) {
-                  setErrors(prev => ({ ...prev, deadline: '' }));
-                }
-              }}
-              placeholder="2024-12-31"
-              placeholderTextColor={colors.placeholder}
-              editable={!saving}
-            />
-            {errors.deadline && <Text style={styles.errorText}>{errors.deadline}</Text>}
-            {deadline && !errors.deadline && (
-              <Text style={styles.helperText}>{formatRemainingDays(deadline)}</Text>
-            )}
-          </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>期限 *</Text>
+              <View style={styles.dateSelectorContainer}>
+                {/* Year Selector */}
+                <View style={styles.dateSelectorGroup}>
+                  <Text style={styles.dateSelectorLabel}>年</Text>
+                  <TouchableOpacity
+                    style={styles.dateSelectorButton}
+                    onPress={showYearPicker}
+                    disabled={saving}
+                  >
+                    <View style={styles.dateSelectorRow}>
+                      <Text style={styles.dateSelectorValue}>{selectedYear}</Text>
+                      <Icon name="edit" size="sm" color={colors.textSecondary} style={styles.dateSelectorIcon} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.resetButton, !hasChanges() && styles.buttonDisabled]}
-              onPress={handleReset}
-              disabled={!hasChanges() || saving}
-            >
-              <Icon name="edit" size="sm" color={colors.text} style={styles.buttonIcon} />
-              <Text style={[styles.resetButtonText, !hasChanges() && styles.buttonTextDisabled]}>
-                リセット
-              </Text>
-            </TouchableOpacity>
+                {/* Month Selector */}
+                <View style={styles.dateSelectorGroup}>
+                  <Text style={styles.dateSelectorLabel}>月</Text>
+                  <TouchableOpacity
+                    style={styles.dateSelectorButton}
+                    onPress={showMonthPicker}
+                    disabled={saving}
+                  >
+                    <View style={styles.dateSelectorRow}>
+                      <Text style={styles.dateSelectorValue}>{selectedMonth.toString().padStart(2, '0')}</Text>
+                      <Icon name="edit" size="sm" color={colors.textSecondary} style={styles.dateSelectorIcon} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
 
-            <TouchableOpacity
-              style={[styles.saveButton, (!hasChanges() || saving) && styles.buttonDisabled]}
-              onPress={handleSave}
-              disabled={!hasChanges() || saving}
-            >
-              {saving ? (
-                <Icon name="clock" size="sm" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Icon name="save" size="sm" color="#FFFFFF" style={styles.buttonIcon} />
-                  <Text style={[styles.saveButtonText, !hasChanges() && styles.buttonTextDisabled]}>
-                    目標を保存
-                  </Text>
-                </>
+                {/* Day Selector */}
+                <View style={styles.dateSelectorGroup}>
+                  <Text style={styles.dateSelectorLabel}>日</Text>
+                  <TouchableOpacity
+                    style={styles.dateSelectorButton}
+                    onPress={showDayPicker}
+                    disabled={saving}
+                  >
+                    <View style={styles.dateSelectorRow}>
+                      <Text style={styles.dateSelectorValue}>{selectedDay.toString().padStart(2, '0')}</Text>
+                      <Icon name="edit" size="sm" color={colors.textSecondary} style={styles.dateSelectorIcon} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {errors.deadline && <Text style={styles.errorText}>{errors.deadline}</Text>}
+              {deadline && !errors.deadline && (
+                <Text style={styles.helperText}>{formatRemainingDays(deadline)}</Text>
               )}
-            </TouchableOpacity>
-          </View>
-        </View>
+            </View>
 
-        <Toast {...toast} onHide={hideToast} />
-      </View>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.resetButton, !hasChanges() && styles.buttonDisabled]}
+                onPress={handleReset}
+                disabled={!hasChanges() || saving}
+              >
+                <Icon name="delete" size="sm" color={colors.textSecondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.saveButton, (!hasChanges() || saving) && styles.buttonDisabled]}
+                onPress={handleSave}
+                disabled={!hasChanges() || saving}
+              >
+                {saving ? (
+                  <Icon name="clock" size="sm" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Icon name="save" size="sm" color="#FFFFFF" style={styles.buttonIcon} />
+                    <Text style={[styles.saveButtonText, !hasChanges() && styles.buttonTextDisabled]}>
+                      保存
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Toast {...toast} onHide={hideToast} />
+        </View>
+      </TouchableWithoutFeedback>
     </Screen>
   );
 };
@@ -294,13 +561,10 @@ const styles = StyleSheet.create({
     ...ui.button.outline,
     flex: 1,
     borderColor: colors.border,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-  },
-  resetButtonText: {
-    ...typography.button,
-    color: colors.text,
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
   },
   saveButton: {
     ...ui.button.primary,
@@ -335,5 +599,42 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: spacing.xs,
+  },
+  dateSelectorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: spacing.sm,
+  },
+  dateSelectorGroup: {
+    alignItems: 'center',
+  },
+  dateSelectorLabel: {
+    ...typography.small,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  dateSelectorButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: 120, // Fixed width for buttons
+  },
+  dateSelectorButton: {
+    padding: spacing.xs,
+  },
+  dateSelectorValue: {
+    ...typography.body,
+    color: colors.text,
+    textAlign: 'center',
+    minWidth: 40, // Fixed width for value
+    marginRight: 0,
+  },
+  dateSelectorIcon: {
+    marginLeft: spacing.xs,
+    marginTop: 0,
+  },
+  dateSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

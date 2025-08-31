@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import {
   PanGestureHandler,
   PinchGestureHandler,
@@ -30,8 +30,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { ui } from '../theme/ui';
-import { animations, createAnimation } from '../theme/animations';
-import { iconSizes } from '../theme/icons';
+import { createAnimation } from '../theme/animations';
 import { RootStackParamList } from '../navigation/navigation/RootNavigator';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -46,8 +45,8 @@ interface ToastState {
   type: ToastType;
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation }) => {
-  const { civilizations, logProgress, deriveCivStates } = useAppStore();
+export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const { civilizations, planetGoal, logProgress, deriveCivStates } = useAppStore();
   
   const [scene, setScene] = useState<PlanetScene | null>(null);
   const [selectedCivilization, setSelectedCivilization] = useState<Civilization | null>(null);
@@ -59,11 +58,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
     type: 'info',
   });
   const [viewDimensions, setViewDimensions] = useState({ width: 0, height: 0 });
+  const [showFirstCivilizationHint, setShowFirstCivilizationHint] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0); // 0 = World Intro, 1 = Planet Tutorial
 
   // Animation values
   const titleScale = useRef(new Animated.Value(0.8)).current;
   const subtitleOpacity = useRef(new Animated.Value(0)).current;
   const planetIconScale = useRef(new Animated.Value(0.5)).current;
+
+  // Tutorial mode detection
+  const isTutorial = !planetGoal || !planetGoal.title || !planetGoal.deadline;
 
   // Refs for gesture handling
   const lastPanRef = useRef({ x: 0, y: 0 });
@@ -74,13 +78,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
     React.useCallback(() => {
       deriveCivStates();
       
+      // Set tutorial step based on goal status
+      if (planetGoal && planetGoal.title && planetGoal.deadline) {
+        // Goal is set, skip tutorial and show normal screen
+        setTutorialStep(-1); // -1 means tutorial is complete
+      } else {
+        // No goal set, start from Step 0
+        setTutorialStep(0);
+      }
+      
+      // Check if we should show first civilization hint
+      // (goal is set but no civilizations exist)
+      if (planetGoal && planetGoal.title && planetGoal.deadline && civilizations.length === 0) {
+        setShowFirstCivilizationHint(true);
+      } else {
+        setShowFirstCivilizationHint(false);
+      }
+      
       // Start entrance animations
       Animated.parallel([
         createAnimation('growth', titleScale),
         createAnimation('fadeIn', subtitleOpacity),
         createAnimation('growth', planetIconScale),
       ]).start();
-    }, [deriveCivStates, titleScale, subtitleOpacity, planetIconScale])
+    }, [deriveCivStates, titleScale, subtitleOpacity, planetIconScale, planetGoal, civilizations.length])
   );
 
   // Update markers when civilizations change
@@ -183,7 +204,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
     setProgressLoading(true);
     try {
       await logProgress(civilization.id);
-      showToast(`${civilization.name}の進捗を記録しました`, 'success');
+      showToast('成長ログを記録しました', 'success');
       
       // Update the scene markers after progress is recorded
       if (scene) {
@@ -192,7 +213,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
       }
     } catch (error) {
       console.error('Failed to record progress:', error);
-      showToast('進捗を記録できませんでした。接続を確認して再試行してください。', 'error');
+      showToast('成長ログの記録に失敗しました。接続を確認して再試行してください。', 'error');
     } finally {
       setProgressLoading(false);
     }
@@ -210,7 +231,127 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
   return (
     <Screen padding={false}>
       <View style={styles.container}>
-        {civilizations.length === 0 ? (
+        {isTutorial && tutorialStep >= 0 ? (
+          tutorialStep === 0 ? (
+            // Step 0: World Intro Screen
+            <View style={styles.tutorialContainer}>
+              <Animated.View 
+                style={[
+                  styles.tutorialIconContainer,
+                  { transform: [{ scale: planetIconScale }] }
+                ]}
+              >
+                <Icon name="planet" size={96} color={colors.primary} />
+              </Animated.View>
+              
+              <Animated.Text 
+                style={[
+                  styles.tutorialTitle,
+                  { transform: [{ scale: titleScale }] }
+                ]}
+              >
+                ようこそ、Antiplanetへ
+              </Animated.Text>
+              
+              <Animated.Text 
+                style={[
+                  styles.tutorialSubtitle,
+                  { opacity: subtitleOpacity }
+                ]}
+              >
+                あなたが挑戦するたびに、{'\n'}
+                星は呼吸し、{'\n'}
+                文明は進化していく。{'\n\n'}
+                偶然も、つまずきも、{'\n'}
+                すべてが星の糧となり、{'\n'}
+                少しずつ大地が広がり、{'\n'}
+                灯りがともっていく。{'\n\n'}
+                これは、あなただけの{'\n'}
+                物語を刻むアプリです。
+              </Animated.Text>
+              
+              <TouchableOpacity 
+                style={styles.tutorialCTA}
+                onPress={() => setTutorialStep(1)}
+              >
+                <Text style={styles.tutorialCTAText}>はじめる</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // Step 1: Planet Tutorial Screen
+            <View style={styles.tutorialContainer}>
+              <Animated.View 
+                style={[
+                  styles.tutorialIconContainer,
+                  { transform: [{ scale: planetIconScale }] }
+                ]}
+              >
+                <Icon name="planet" size="xxl" color={colors.secondary} />
+              </Animated.View>
+              
+              <Animated.Text 
+                style={[
+                  styles.tutorialTitle,
+                  { transform: [{ scale: titleScale }] }
+                ]}
+              >
+                はじめに、星のビジョンを決めましょう
+              </Animated.Text>
+              
+              <Animated.Text 
+                style={[
+                  styles.tutorialSubtitle,
+                  { opacity: subtitleOpacity }
+                ]}
+              >
+                星のビジョンを保存すると、挑戦（最大10件）を登録できます。
+              </Animated.Text>
+              
+              <TouchableOpacity 
+                style={styles.tutorialCTA}
+                onPress={() => navigation.navigate('PlanetSettings')}
+              >
+                <Text style={styles.tutorialCTAText}>星のビジョンを設定する</Text>
+              </TouchableOpacity>
+              
+              <Animated.Text 
+                style={[
+                  styles.tutorialHelper,
+                  { opacity: subtitleOpacity }
+                ]}
+              >
+                星のビジョンを決めると、あなたの惑星が誕生します。
+              </Animated.Text>
+            </View>
+          )
+        ) : showFirstCivilizationHint ? (
+          <View style={styles.hintContainer}>
+            <Animated.View 
+              style={[
+                styles.hintIconContainer,
+                { transform: [{ scale: planetIconScale }] }
+              ]}
+            >
+              <Icon name="civilizations" size="xxl" color={colors.primary} />
+            </Animated.View>
+            
+            <Animated.Text 
+              style={[
+                styles.hintTitle,
+                { transform: [{ scale: titleScale }] }
+              ]}
+            >
+              最初の挑戦を登録しましょう
+            </Animated.Text>
+            
+            <TouchableOpacity 
+              style={styles.hintCTA}
+              onPress={() => navigation.navigate('Civilizations')}
+            >
+              <Text style={styles.hintCTAText}>挑戦を追加</Text>
+            </TouchableOpacity>
+          </View>
+        ) : civilizations.length === 0 ? (
           <View style={styles.emptyState}>
             <Animated.View 
               style={[
@@ -226,7 +367,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
                 { transform: [{ scale: titleScale }] }
               ]}
             >
-              惑星が待っています
+              星のビジョンが待っています
             </Animated.Text>
             <Animated.Text 
               style={[
@@ -234,30 +375,55 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation: _navigation 
                 { opacity: subtitleOpacity }
               ]}
             >
-              惑星は生命の準備ができています！最初の文明を作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
+              星のビジョンは生命の準備ができています！最初の挑戦を作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
             </Animated.Text>
           </View>
         ) : (
-          <TapGestureHandler onGestureEvent={handleTapGestureEvent}>
-            <PinchGestureHandler
-              onGestureEvent={handlePinchGestureEvent}
-              onHandlerStateChange={handlePinchStateChange}
-            >
-              <PanGestureHandler
-                onGestureEvent={handlePanGestureEvent}
-                onHandlerStateChange={handlePanStateChange}
+          <View style={styles.mainContent}>
+            {/* Header with navigation */}
+            <View style={styles.header}>
+              <TouchableOpacity 
+                style={styles.headerLeft}
+                onPress={() => navigation.navigate('PlanetSettings')}
               >
-                <GLView
-                  style={styles.glView}
-                  onContextCreate={handleContextCreate}
-                  onLayout={(event) => {
-                    const { width, height } = event.nativeEvent.layout;
-                    handleResize(width, height);
-                  }}
-                />
-              </PanGestureHandler>
-            </PinchGestureHandler>
-          </TapGestureHandler>
+                <Icon name="planet" size="md" color={colors.primary} />
+                <Text style={styles.headerTitle}>星のビジョン</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.headerRight}
+                onPress={() => navigation.navigate('Civilizations')}
+              >
+                <Icon name="civilizations" size="md" color={colors.primary} />
+                <Text style={styles.headerTitle}>挑戦</Text>
+                <View style={styles.civilizationCount}>
+                  <Text style={styles.countText}>{civilizations.length}</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* 3D Planet View */}
+            <TapGestureHandler onGestureEvent={handleTapGestureEvent}>
+              <PinchGestureHandler
+                onGestureEvent={handlePinchGestureEvent}
+                onHandlerStateChange={handlePinchStateChange}
+              >
+                <PanGestureHandler
+                  onGestureEvent={handlePanGestureEvent}
+                  onHandlerStateChange={handlePanStateChange}
+                >
+                  <GLView
+                    style={styles.glView}
+                    onContextCreate={handleContextCreate}
+                    onLayout={(event) => {
+                      const { width, height } = event.nativeEvent.layout;
+                      handleResize(width, height);
+                    }}
+                  />
+                </PanGestureHandler>
+              </PinchGestureHandler>
+            </TapGestureHandler>
+          </View>
         )}
 
         <CivilizationBottomSheet
@@ -305,5 +471,141 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  tutorialContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+    backgroundColor: colors.background,
+    width: '100%',
+  },
+  tutorialIconContainer: {
+    marginBottom: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  tutorialTitle: {
+    ...typography.heading,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    maxWidth: 300,
+  },
+  tutorialSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    letterSpacing: 0.3,
+    maxWidth: 320,
+  },
+  tutorialCTA: {
+    ...ui.button.primary,
+    width: '100%',
+    maxWidth: 280,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 28,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  tutorialCTAText: {
+    ...typography.subheading,
+    color: colors.background,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  tutorialHelper: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: spacing.lg,
+    opacity: 0.8,
+  },
+  hintContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    backgroundColor: colors.background,
+  },
+  hintIconContainer: {
+    marginBottom: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  hintTitle: {
+    ...typography.heading,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  hintCTA: {
+    ...ui.button.primary,
+    width: '100%',
+  },
+  hintCTAText: {
+    ...typography.subheading,
+    color: colors.background,
+    fontWeight: '600',
+  },
+  mainContent: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    ...typography.subheading,
+    color: colors.text,
+    marginLeft: spacing.sm,
+  },
+  civilizationCount: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+  countText: {
+    ...typography.caption,
+    color: colors.background,
+    fontWeight: '600',
   },
 });

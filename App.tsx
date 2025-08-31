@@ -2,6 +2,7 @@ import 'react-native-reanimated';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   useFonts,
   NotoSansJP_300Light,
@@ -54,7 +55,9 @@ export default function App() {
   return (
     <>
       <StatusBar style="light" />
-      <RootNavigator />
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <RootNavigator />
+      </GestureHandlerRootView>
     </>
   );
 }
