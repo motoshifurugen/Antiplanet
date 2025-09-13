@@ -13,10 +13,10 @@ export const colors = {
   accent: '#D9B86C',         // Gold - achievements, highlights
   
   // Civilization level colors - progression from nature to urban
-  grassland: '#8FBC8F',      // Forest green - natural, undeveloped
-  village: '#D2B48C',        // Tan - simple, rural development
-  town: '#CD853F',           // Peru - moderate development
-  city: '#B8860B',           // Dark goldenrod - advanced urban development
+  grassland: '#7CFC00',      // Lime green - life sprouting, beginning excitement
+  village: '#DAA520',        // Goldenrod - warm village lights and harvest
+  town: '#FF8C00',           // Dark orange - vibrant markets and bustling buildings
+  city: '#FFD700',           // Gold - luxurious city prosperity with white highlights
   
   // Dark cosmic background - optimized for all lighting conditions
   background: '#0A0A0F',     // Deep cosmic black (slightly lighter for day viewing)

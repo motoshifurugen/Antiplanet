@@ -59,11 +59,12 @@ export const startIdleAnimation = (scene: PlanetScene): void => {
   animationInterval = setInterval(() => {
     if (spinGroup && !isGestureActive) {
       // Update day/night angle (planet rotation) only when not gesturing
-      dayNightAngle -= 0.01; // Slow rotation (reversed direction)
+      dayNightAngle += 0.01; // Slow rotation (correct direction)
       spinGroup.rotation.y = dayNightAngle;
       
       // Update marker day/night states based on rotation
       updateMarkerDayNightStates(scene);
+      
       
       scene.renderer.render(scene.scene, scene.camera);
       (scene.renderer.getContext() as any).endFrameEXP();
@@ -109,15 +110,15 @@ export const endGesture = (scene: PlanetScene): void => {
 const getLightIntensityByLevel = (level: CivLevel): number => {
   switch (level) {
     case 'grassland':
-      return 0.15; // Very dim light for natural areas
+      return 0.20; // Moderate light for natural areas (increased for visibility)
     case 'village':
-      return 0.25; // Dim light for rural areas
+      return 0.35; // Warm light for rural areas (increased for goldenrod)
     case 'town':
-      return 0.40; // Moderate light for towns
+      return 0.50; // Bright light for towns (increased for orange vibrancy)
     case 'city':
-      return 0.60; // Bright light for cities
+      return 0.80; // Very bright light for cities (increased for gold brilliance)
     default:
-      return 0.15;
+      return 0.20;
   }
 };
 
@@ -148,15 +149,15 @@ const getLightIntensityByState = (state: CivState): number => {
 const getNightLightColorByLevel = (level: CivLevel): number => {
   switch (level) {
     case 'grassland':
-      return 0x444466; // Dim blue-white for natural areas
+      return 0x7CFC00; // Bright lime green for natural areas
     case 'village':
-      return 0x666644; // Warm amber light for rural areas
+      return 0xDAA520; // Warm goldenrod light for rural areas
     case 'town':
-      return 0x888844; // Bright golden light for towns
+      return 0xFF8C00; // Vibrant dark orange light for towns
     case 'city':
-      return 0xAAAA22; // Very bright golden light for cities
+      return 0xFFD700; // Bright gold light for cities
     default:
-      return 0x444466;
+      return 0x7CFC00;
   }
 };
 
@@ -181,19 +182,72 @@ const getNightLightColorByState = (state: CivState): number => {
 
 /**
  * Update marker day/night states based on planet rotation
- * Note: Color changes removed - lighting will be handled by building lights separately
+ * Darken markers during night time for more realistic appearance
  */
 const updateMarkerDayNightStates = (scene: PlanetScene): void => {
   scene.markers.forEach((marker, civilizationId) => {
-    // Keep consistent appearance regardless of day/night
-    // Color changes removed - lighting will be handled by building lights separately
+    // Get marker position in world coordinates
+    const worldPosition = new THREE.Vector3();
+    marker.getWorldPosition(worldPosition);
+    
+    // Calculate if marker is in day or night based on its position
+    // Sun light comes from (25, 0, 8) direction
+    // Calculate dot product with sun direction for accurate day/night
+    const sunDirection = new THREE.Vector3(25, 0, 8).normalize();
+    const markerDirection = worldPosition.normalize();
+    const dotProduct = markerDirection.dot(sunDirection);
+    
+    // Smooth transition between day and night (0.0 = full night, 1.0 = full day)
+    // Use a much smoother curve for gradual transition
+    const rawRatio = (dotProduct + 0.5) / 1.0; // Wider transition range (-0.5 to 0.5)
+    const clampedRatio = Math.max(0, Math.min(1, rawRatio));
+    
+    // Apply smooth curve (ease-in-out) for more natural transition
+    const dayNightRatio = clampedRatio * clampedRatio * (3 - 2 * clampedRatio); // Smoothstep function
+    
     const material = marker.material as THREE.MeshStandardMaterial;
     
-    // Maintain consistent emissive properties
-    material.emissiveIntensity = 0.2; // Consistent base emissive intensity
-    // Keep original color - no day/night color changes
+    // Smooth interpolation between day and night values
+    const dayEmissive = 0.2;
+    const nightEmissive = 0.03; // Much dimmer at night
+    const dayOpacity = 1.0;
+    const nightOpacity = 0.4; // More transparent at night for darker appearance
+    
+    material.emissiveIntensity = nightEmissive + (dayEmissive - nightEmissive) * dayNightRatio;
+    material.opacity = nightOpacity + (dayOpacity - nightOpacity) * dayNightRatio;
   });
+  
+  // Update equator ring gradient based on planet rotation
+  updateEquatorGradient(scene);
 };
+
+/**
+ * Update equator ring gradient to show day/night transition
+ */
+const updateEquatorGradient = (scene: PlanetScene): void => {
+  // Find the equator ring
+  let equatorRing: THREE.Mesh | null = null;
+  scene.scene.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.userData.isEquatorRing) {
+      equatorRing = object as THREE.Mesh;
+    }
+  });
+  
+  if (!equatorRing) return;
+  
+  // Calculate current day/night angle
+  const sunDirection = new THREE.Vector3(25, 0, 8).normalize();
+  
+  // Create gradient effect by adjusting opacity based on position
+  const material = (equatorRing as THREE.Mesh).material as THREE.MeshBasicMaterial;
+  
+  // Simple gradient effect - brighter on day side, much dimmer on night side
+  // This is a simplified approach; for more complex gradients, we'd need custom shaders
+  const currentRotation = dayNightAngle;
+  const gradientIntensity = Math.sin(currentRotation) * 0.3 + 0.7; // 0.4 to 1.0
+  material.opacity = 0.1 + gradientIntensity * 0.4; // 0.1 to 0.5 (much darker at night)
+};
+
 
 /**
  * Create smooth planet mesh with PBR material
@@ -201,6 +255,9 @@ const updateMarkerDayNightStates = (scene: PlanetScene): void => {
 export const createPlanetMesh = (): THREE.Mesh => {
   // Smooth sphere geometry with proper aspect ratio to prevent distortion
   const planetGeometry = new THREE.SphereGeometry(PLANET_RADIUS, 64, 64);
+  
+  // Ensure sphere geometry is perfectly round
+  planetGeometry.computeBoundingSphere();
   
   // PBR material with ocean blue base and subtle gradient
   const planetMaterial = new THREE.MeshStandardMaterial({
@@ -268,7 +325,7 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 
   // Camera setup
   const camera = new THREE.PerspectiveCamera(
-    50, // FOV (adjusted for better planet appearance)
+    45, // FOV (reduced to prevent vertical distortion)
     gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
     0.1, // near
     100 // far
@@ -308,20 +365,24 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
   planet.add(outline);
   
-  // Add equator ring for visual rotation cue
-  const ringGeometry = new THREE.RingGeometry(PLANET_RADIUS * 0.995, PLANET_RADIUS * 1.005, 32);
+  // Add equator ring with day/night gradient effect
+  const ringGeometry = new THREE.RingGeometry(PLANET_RADIUS * 0.98, PLANET_RADIUS * 1.02, 64); // More segments for smoother gradient
   const ringMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.3,
+    opacity: 0.5,
     side: THREE.DoubleSide,
   });
   const equatorRing = new THREE.Mesh(ringGeometry, ringMaterial);
   equatorRing.rotation.x = Math.PI / 2; // Rotate to be horizontal
   
+  // Store reference for day/night updates
+  equatorRing.userData.isEquatorRing = true;
+  
   // Add planet and equator ring to spin group
   spinGroup.add(planet);
   spinGroup.add(equatorRing);
+  
   
   // Add spin group to tilt group
   tiltGroup.add(spinGroup);
@@ -596,6 +657,8 @@ export const createCivilizationMarker = (
     roughness: 0.3,
     emissive: markerColor,
     emissiveIntensity: 0.2,
+    transparent: true, // Enable transparency for night darkening
+    opacity: 1.0, // Default opacity (will be changed at night)
   });
   
   const marker = new THREE.Mesh(markerGeometry, markerMaterial);
@@ -740,9 +803,13 @@ export const resizeScene = (
   width: number,
   height: number
 ): void => {
-  scene.camera.aspect = width / height;
+  const aspectRatio = width / height;
+  scene.camera.aspect = aspectRatio;
   scene.camera.updateProjectionMatrix();
   scene.renderer.setSize(width, height);
+  
+  // Ensure proper aspect ratio to prevent sphere distortion
+  console.log(`Screen resize: ${width}x${height}, aspect ratio: ${aspectRatio.toFixed(2)}`);
 };
 
 /**
@@ -788,15 +855,15 @@ export const rotatePlanet = (
 ): void => {
   // Apply rotation to spin group for intuitive XYZ rotation
   if (spinGroup) {
-    // Horizontal swipe (deltaX) rotates around Y-axis (reversed direction)
-    const yRotation = -deltaX * sensitivity; // Reversed direction
+    // Horizontal swipe (deltaX) rotates around Y-axis (correct direction)
+    const yRotation = deltaX * sensitivity; // Correct direction
     spinGroup.rotation.y += yRotation;
     
     // Update day/night angle to match current rotation
     dayNightAngle = spinGroup.rotation.y;
     
-    // Vertical swipe (deltaY) rotates around X-axis (reversed direction)
-    spinGroup.rotation.x -= deltaY * sensitivity; // Reversed direction
+    // Vertical swipe (deltaY) rotates around X-axis (correct direction)
+    spinGroup.rotation.x += deltaY * sensitivity; // Correct direction
   }
 };
 
