@@ -25,10 +25,10 @@ export interface CivilizationMarker {
 }
 
 // Planet and camera constants
-const PLANET_RADIUS = 1;
-const CAMERA_MIN_DISTANCE = 2;
-const CAMERA_MAX_DISTANCE = 6;
-const CAMERA_INITIAL_DISTANCE = 3.5;
+const PLANET_RADIUS = 0.5; // Much smaller planet for better screen fit
+const CAMERA_MIN_DISTANCE = 1.2; // Adjusted for much smaller planet
+const CAMERA_MAX_DISTANCE = 4.0; // Adjusted for much smaller planet
+const CAMERA_INITIAL_DISTANCE = 2.2; // Adjusted for much smaller planet
 const EARTH_AXIS_TILT = 23.4 * Math.PI / 180; // 23.4 degrees in radians
 
 /**
@@ -49,6 +49,27 @@ export const createPlanetMesh = (): THREE.Mesh => {
   
   const planet = new THREE.Mesh(planetGeometry, planetMaterial);
   return planet;
+};
+
+/**
+ * Create atmosphere mesh with subtle gradient glow effect
+ */
+export const createAtmosphereMesh = (planetRadius: number): THREE.Mesh => {
+  // Much larger sphere for wide gradient spread
+  const atmosphereRadius = planetRadius * 1.4; // 40% larger for wide gradient
+  const atmosphereGeometry = new THREE.SphereGeometry(atmosphereRadius, 20, 12);
+  
+  // Very subtle material with gradient effect
+  const atmosphereMaterial = new THREE.MeshBasicMaterial({
+    color: 0x87ceeb, // Light sky blue
+    transparent: true,
+    opacity: 0.08, // Much more subtle opacity
+    side: THREE.BackSide, // Render inside faces for rim effect
+    blending: THREE.AdditiveBlending, // Glow effect
+  });
+  
+  const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+  return atmosphere;
 };
 
 /**
@@ -80,7 +101,7 @@ export const setupLights = (scene: THREE.Scene): void => {
 export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene => {
   // Scene setup
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0a0a); // Dark space background
+  scene.background = new THREE.Color(0x1a1a2e); // Slightly brighter space background
 
   // Camera setup
   const camera = new THREE.PerspectiveCamera(
@@ -108,6 +129,17 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   // Apply Earth's axis tilt (23.4 degrees)
   planet.rotation.x = EARTH_AXIS_TILT;
   
+  // Add very subtle white outline to planet
+  const outlineGeometry = new THREE.SphereGeometry(PLANET_RADIUS * 1.005, 32, 24);
+  const outlineMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.15,
+    side: THREE.BackSide,
+  });
+  const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+  planet.add(outline);
+  
   scene.add(planet);
 
   // Interaction setup
@@ -127,6 +159,7 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 
 /**
  * Generate stable spherical position for civilization
+ * Limited to 0-70 degrees latitude (both north and south)
  */
 export const getCivilizationPosition = (civilization: Civilization, index: number): THREE.Vector3 => {
   // Create stable position based on ID hash and index
@@ -138,8 +171,13 @@ export const getCivilizationPosition = (civilization: Civilization, index: numbe
   }, 0);
   
   // Convert hash to spherical coordinates
-  const phi = (Math.abs(hash) % 1000) / 1000 * Math.PI * 2; // Longitude
-  const theta = (index * 0.618034) % 1 * Math.PI; // Latitude (golden ratio spacing)
+  const phi = (Math.abs(hash) % 1000) / 1000 * Math.PI * 2; // Longitude (0-360 degrees)
+  
+  // Latitude limited to 0-70 degrees (both north and south)
+  // Convert 0-70 degrees to radians: 0 to 70*π/180
+  const maxLatitudeRadians = 70 * Math.PI / 180; // 70 degrees in radians
+  const latitudeRange = maxLatitudeRadians * 2; // Total range: -70 to +70 degrees
+  const theta = (index * 0.618034) % 1 * latitudeRange + (Math.PI / 2 - maxLatitudeRadians);
   
   // Convert to Cartesian coordinates on sphere surface
   const x = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.cos(phi); // Slightly outside planet
