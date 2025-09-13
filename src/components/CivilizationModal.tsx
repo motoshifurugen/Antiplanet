@@ -538,8 +538,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   inputError: {
-    borderColor: colors.error,
     ...ui.inputError,
+    borderColor: colors.error,
   },
   errorText: {
     color: colors.error,

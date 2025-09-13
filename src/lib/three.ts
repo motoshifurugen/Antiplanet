@@ -4,7 +4,7 @@
 import { ExpoWebGLRenderingContext } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import * as THREE from 'three';
-import { Civilization, CivState } from '../types';
+import { Civilization, CivState, CivLevel } from '../types';
 import { colors } from '../theme/colors';
 
 export interface PlanetScene {
@@ -26,14 +26,15 @@ export interface CivilizationMarker {
 
 // Planet and camera constants
 const PLANET_RADIUS = 0.5; // Much smaller planet for better screen fit
-const CAMERA_MIN_DISTANCE = 1.2; // Adjusted for much smaller planet
-const CAMERA_MAX_DISTANCE = 4.0; // Adjusted for much smaller planet
-const CAMERA_INITIAL_DISTANCE = 2.2; // Adjusted for much smaller planet
+const CAMERA_MIN_DISTANCE = 2.0; // Further increased for smaller initial view
+const CAMERA_MAX_DISTANCE = 5.0; // Further increased for more zoom range
+const CAMERA_INITIAL_DISTANCE = 3.5; // Further increased for smaller initial view
 const EARTH_AXIS_TILT = 15 * Math.PI / 180; // 15 degrees in radians
 
 // Global references for scene graph
 let tiltGroup: THREE.Group | null = null;
 let spinGroup: THREE.Group | null = null;
+let cloudLayer: THREE.Mesh | null = null;
 
 // Animation state
 let animationInterval: NodeJS.Timeout | null = null;
@@ -59,11 +60,32 @@ export const startIdleAnimation = (scene: PlanetScene): void => {
   animationInterval = setInterval(() => {
     if (spinGroup && !isGestureActive) {
       // Update day/night angle (planet rotation) only when not gesturing
-      dayNightAngle += 0.01; // Slow rotation
+      dayNightAngle += 0.01; // Slow rotation (correct direction)
       spinGroup.rotation.y = dayNightAngle;
+      
+      // Update cloud layer rotation - slower than planet for natural movement
+      if (cloudLayer && !isGestureActive) {
+        // Cloud layer rotates at 85% of planet speed for more noticeable drift effect
+        // Use incremental rotation instead of absolute positioning to avoid jumps
+        cloudLayer.rotation.y += 0.01 * 0.85; // Incremental rotation at 85% speed
+        
+        // Skip cloud day/night updates - keep clouds at constant color
+        
+        // Add subtle texture animation for cloud movement
+        cloudLayer.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.material) {
+            const cloudMaterial = child.material as THREE.MeshBasicMaterial;
+            if (cloudMaterial.map) {
+              cloudMaterial.map.offset.x += 0.0001; // Very slow texture drift
+              cloudMaterial.map.offset.y += 0.00005; // Even slower vertical drift
+            }
+          }
+        });
+      }
       
       // Update marker day/night states based on rotation
       updateMarkerDayNightStates(scene);
+      
       
       scene.renderer.render(scene.scene, scene.camera);
       (scene.renderer.getContext() as any).endFrameEXP();
@@ -99,10 +121,92 @@ export const endGesture = (scene: PlanetScene): void => {
   if (scene) {
     updateMarkerDayNightStates(scene);
   }
+  
+  // Don't reset cloud position - keep it at current position
+  // Cloud will continue rotating from its current position during automatic animation
+};
+
+/**
+ * Get light intensity based on civilization level
+ * Higher level civilizations have stronger lights
+ * Balanced to not overwhelm the planet's atmosphere
+ */
+const getLightIntensityByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return 0.20; // Moderate light for natural areas (increased for visibility)
+    case 'village':
+      return 0.35; // Warm light for rural areas (increased for goldenrod)
+    case 'town':
+      return 0.50; // Bright light for towns (increased for orange vibrancy)
+    case 'city':
+      return 0.80; // Very bright light for cities (increased for gold brilliance)
+    default:
+      return 0.20;
+  }
+};
+
+/**
+ * Get light intensity based on civilization state (legacy support)
+ * Higher rank civilizations have stronger lights
+ * Balanced to not overwhelm the planet's atmosphere
+ */
+const getLightIntensityByState = (state: CivState): number => {
+  switch (state) {
+    case 'uninitialized':
+      return 0.12; // Very dim light for uninitialized
+    case 'developing':
+      return 0.45; // Bright but not overwhelming light for developing civilizations
+    case 'decaying':
+      return 0.25; // Moderate light for decaying civilizations
+    case 'ocean':
+      return 0.05; // Very dim light for ocean civilizations (shouldn't be visible)
+    default:
+      return 0.18;
+  }
+};
+
+/**
+ * Get night light color based on civilization level
+ * Creates warm, atmospheric lighting for night side
+ */
+const getNightLightColorByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return 0x7CFC00; // Bright lime green for natural areas
+    case 'village':
+      return 0xDAA520; // Warm goldenrod light for rural areas
+    case 'town':
+      return 0xFF8C00; // Vibrant dark orange light for towns
+    case 'city':
+      return 0xFFD700; // Bright gold light for cities
+    default:
+      return 0x7CFC00;
+  }
+};
+
+/**
+ * Get night light color based on civilization state (legacy support)
+ * Creates warm, atmospheric lighting for night side
+ */
+const getNightLightColorByState = (state: CivState): number => {
+  switch (state) {
+    case 'uninitialized':
+      return 0x333355; // Cool blue-white for uninitialized
+    case 'developing':
+      return 0x888844; // Warm golden light for developing civilizations
+    case 'decaying':
+      return 0x666633; // Dimmer amber light for decaying civilizations
+    case 'ocean':
+      return 0x222244; // Very dim blue for ocean civilizations
+    default:
+      return 0x444466;
+  }
 };
 
 /**
  * Update marker day/night states based on planet rotation
+ * Darken markers during night time for more realistic appearance
  */
 const updateMarkerDayNightStates = (scene: PlanetScene): void => {
   scene.markers.forEach((marker, civilizationId) => {
@@ -116,30 +220,134 @@ const updateMarkerDayNightStates = (scene: PlanetScene): void => {
     const sunDirection = new THREE.Vector3(25, 0, 8).normalize();
     const markerDirection = worldPosition.normalize();
     const dotProduct = markerDirection.dot(sunDirection);
-    // Adjust threshold to match lighting - lights turn off later
-    const isDay = dotProduct > 0.1; // Threshold adjusted to delay light turn-off
     
-    // Update marker appearance based on day/night
-    // Night = lights on (bright), Day = lights off (dim)
+    // Smooth transition between day and night (0.0 = full night, 1.0 = full day)
+    // Use a much smoother curve for gradual transition
+    const rawRatio = (dotProduct + 0.5) / 1.0; // Wider transition range (-0.5 to 0.5)
+    const clampedRatio = Math.max(0, Math.min(1, rawRatio));
+    
+    // Apply smooth curve (ease-in-out) for more natural transition
+    const dayNightRatio = clampedRatio * clampedRatio * (3 - 2 * clampedRatio); // Smoothstep function
+    
     const material = marker.material as THREE.MeshStandardMaterial;
-    if (isDay) {
-      // Day: lights off, dim colors
-      material.emissive.setHex(0x111133);
-      material.emissiveIntensity = 0.1;
-    } else {
-      // Night: lights on, bright warm colors
-      material.emissive.setHex(0x666644);
-      material.emissiveIntensity = 0.4;
+    
+    // Smooth interpolation between day and night values
+    const dayEmissive = 0.2;
+    const nightEmissive = 0.03; // Much dimmer at night
+    const dayOpacity = 1.0;
+    const nightOpacity = 0.4; // More transparent at night for darker appearance
+    
+    material.emissiveIntensity = nightEmissive + (dayEmissive - nightEmissive) * dayNightRatio;
+    material.opacity = nightOpacity + (dayOpacity - nightOpacity) * dayNightRatio;
+  });
+  
+  // Update equator ring gradient based on planet rotation
+  updateEquatorGradient(scene);
+};
+
+/**
+ * Update cloud day/night states based on planet rotation
+ * Darken clouds during night time for more realistic appearance
+ */
+const updateCloudDayNightStates = (): void => {
+  if (!cloudLayer) return;
+  
+  // Calculate current day/night angle
+  const sunDirection = new THREE.Vector3(25, 0, 8).normalize();
+  
+  // Calculate cloud layer position relative to sun
+  const cloudPosition = new THREE.Vector3();
+  cloudLayer.getWorldPosition(cloudPosition);
+  
+  // Calculate dot product with sun direction for day/night determination
+  const cloudDirection = cloudPosition.normalize();
+  const dotProduct = cloudDirection.dot(sunDirection);
+  
+  // Smooth transition between day and night (0.0 = full night, 1.0 = full day)
+  const rawRatio = (dotProduct + 0.5) / 1.0; // Wider transition range (-0.5 to 0.5)
+  const clampedRatio = Math.max(0, Math.min(1, rawRatio));
+  
+  // Apply smooth curve (ease-in-out) for more natural transition
+  const dayNightRatio = clampedRatio * clampedRatio * (3 - 2 * clampedRatio); // Smoothstep function
+  
+  // Interpolate between day and night colors
+  const dayColor = 0xe8e8e8; // Subdued white for day
+  const nightColor = 0x555555; // Much darker gray for night
+  
+  // Smooth color interpolation
+  const dayR = (dayColor >> 16) & 0xff;
+  const dayG = (dayColor >> 8) & 0xff;
+  const dayB = dayColor & 0xff;
+  
+  const nightR = (nightColor >> 16) & 0xff;
+  const nightG = (nightColor >> 8) & 0xff;
+  const nightB = nightColor & 0xff;
+  
+  const currentR = Math.floor(dayR + (nightR - dayR) * (1 - dayNightRatio));
+  const currentG = Math.floor(dayG + (nightG - dayG) * (1 - dayNightRatio));
+  const currentB = Math.floor(dayB + (nightB - dayB) * (1 - dayNightRatio));
+  
+  const currentColor = (currentR << 16) | (currentG << 8) | currentB;
+  
+  // Update materials for both outer and inner cloud shells
+  cloudLayer.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.material) {
+      const material = child.material as THREE.MeshBasicMaterial;
+      material.color.setHex(currentColor);
     }
   });
 };
 
 /**
+ * Update equator ring gradient to show day/night transition
+ */
+const updateEquatorGradient = (scene: PlanetScene): void => {
+  // Find the equator ring
+  let equatorRing: THREE.Mesh | null = null;
+  scene.scene.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.userData.isEquatorRing) {
+      equatorRing = object as THREE.Mesh;
+    }
+  });
+  
+  if (!equatorRing) return;
+  
+  // Calculate current day/night angle
+  const sunDirection = new THREE.Vector3(25, 0, 8).normalize();
+  
+  // Create gradient effect by adjusting opacity based on position
+  const material = (equatorRing as THREE.Mesh).material as THREE.MeshBasicMaterial;
+  
+  // Simple gradient effect - brighter on day side, much dimmer on night side
+  // This is a simplified approach; for more complex gradients, we'd need custom shaders
+  const currentRotation = dayNightAngle;
+  const gradientIntensity = Math.sin(currentRotation) * 0.3 + 0.7; // 0.4 to 1.0
+  material.opacity = 0.1 + gradientIntensity * 0.4; // 0.1 to 0.5 (much darker at night)
+};
+
+
+/**
  * Create smooth planet mesh with PBR material
  */
 export const createPlanetMesh = (): THREE.Mesh => {
-  // Smooth sphere geometry with 64 segments for quality
-  const planetGeometry = new THREE.SphereGeometry(PLANET_RADIUS, 64, 48);
+  // Smooth sphere geometry with proper aspect ratio to prevent distortion
+  const planetGeometry = new THREE.SphereGeometry(PLANET_RADIUS, 64, 64);
+  
+  // Ensure sphere geometry is perfectly round
+  planetGeometry.computeBoundingSphere();
+  
+  // Ensure the geometry is perfectly spherical by normalizing vertices
+  const vertices = planetGeometry.attributes.position.array;
+  for (let i = 0; i < vertices.length; i += 3) {
+    const x = vertices[i];
+    const y = vertices[i + 1];
+    const z = vertices[i + 2];
+    const length = Math.sqrt(x * x + y * y + z * z);
+    vertices[i] = (x / length) * PLANET_RADIUS;
+    vertices[i + 1] = (y / length) * PLANET_RADIUS;
+    vertices[i + 2] = (z / length) * PLANET_RADIUS;
+  }
+  planetGeometry.attributes.position.needsUpdate = true;
   
   // PBR material with ocean blue base and subtle gradient
   const planetMaterial = new THREE.MeshStandardMaterial({
@@ -176,6 +384,147 @@ export const createAtmosphereMesh = (planetRadius: number): THREE.Mesh => {
 };
 
 /**
+ * Create cloud layer mesh with natural cloud patterns
+ */
+export const createCloudLayerMesh = (planetRadius: number): THREE.Mesh => {
+  // Cloud layer with more thickness - create outer and inner spheres
+  const outerRadius = planetRadius * 1.15;
+  const innerRadius = planetRadius * 1.08;
+  
+  // Create outer sphere geometry
+  const outerGeometry = new THREE.SphereGeometry(outerRadius, 64, 64);
+  
+  // Create inner sphere geometry (smaller, will be subtracted)
+  const innerGeometry = new THREE.SphereGeometry(innerRadius, 64, 64);
+  
+  // Create cloud layer group
+  const cloudGroup = new THREE.Group();
+  
+  // Create outer cloud shell
+  const cloudTexture = createCloudTexture();
+  const cloudMaterial = new THREE.MeshBasicMaterial({
+    map: cloudTexture,
+    color: 0xe8e8e8, // More subdued white base (more grayish)
+    transparent: true,
+    opacity: 0.6, // Reduced opacity for more subtle appearance
+    side: THREE.DoubleSide, // Render both sides
+    alphaTest: 0.5, // Higher threshold to cut off more transparent areas
+  });
+  
+  const outerCloud = new THREE.Mesh(outerGeometry, cloudMaterial);
+  cloudGroup.add(outerCloud);
+  
+  // Create middle cloud shell for additional thickness
+  const middleRadius = planetRadius * 1.11;
+  const middleGeometry = new THREE.SphereGeometry(middleRadius, 64, 64);
+  const middleCloudMaterial = cloudMaterial.clone();
+  middleCloudMaterial.opacity = 0.5; // Medium transparency for middle layer
+  middleCloudMaterial.alphaTest = 0.5; // Higher threshold to cut off more transparent areas
+  const middleCloud = new THREE.Mesh(middleGeometry, middleCloudMaterial);
+  cloudGroup.add(middleCloud);
+  
+  // Create inner cloud shell (slightly different material for depth)
+  const innerCloudMaterial = cloudMaterial.clone();
+  innerCloudMaterial.opacity = 0.4; // More transparent for depth effect
+  innerCloudMaterial.alphaTest = 0.5; // Higher threshold to cut off more transparent areas
+  const innerCloud = new THREE.Mesh(innerGeometry, innerCloudMaterial);
+  cloudGroup.add(innerCloud);
+  
+  return cloudGroup as any; // Type assertion for compatibility
+};
+
+/**
+ * Create procedural cloud texture with elliptical cloud patterns
+ * React Native compatible version using DataTexture
+ */
+const createCloudTexture = (): THREE.DataTexture => {
+  const size = 512; // Texture resolution
+  const data = new Uint8Array(size * size * 4); // RGBA data
+  
+  // Simple noise function for cloud patterns
+  const noise = (x: number, y: number): number => {
+    return Math.sin(x * 0.1) * Math.cos(y * 0.1) + 
+           Math.sin(x * 0.05) * Math.cos(y * 0.05) * 0.5 +
+           Math.sin(x * 0.02) * Math.cos(y * 0.02) * 0.25;
+  };
+  
+  // Generate elliptical cloud patterns (fewer clouds with more rounded shape)
+  const cloudCenters = [
+    { x: 150, y: 180, width: 35, height: 30, angle: 0.3 },
+    { x: 350, y: 120, width: 40, height: 35, angle: -0.2 },
+    { x: 450, y: 280, width: 30, height: 28, angle: 0.5 },
+    { x: 200, y: 380, width: 35, height: 32, angle: -0.4 },
+    { x: 400, y: 420, width: 40, height: 36, angle: 0.1 },
+  ];
+  
+  // Generate cloud pattern data
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const index = (y * size + x) * 4;
+      
+      let cloudValue = 0;
+      
+      // Check each elliptical cloud
+      for (const cloud of cloudCenters) {
+        // Rotate coordinates
+        const cos = Math.cos(cloud.angle);
+        const sin = Math.sin(cloud.angle);
+        const dx = x - cloud.x;
+        const dy = y - cloud.y;
+        const rotatedX = dx * cos + dy * sin;
+        const rotatedY = -dx * sin + dy * cos;
+        
+        // Check if point is inside ellipse
+        const ellipseValue = (rotatedX * rotatedX) / (cloud.width * cloud.width) + 
+                           (rotatedY * rotatedY) / (cloud.height * cloud.height);
+        
+        if (ellipseValue <= 1) {
+          // Add elliptical cloud with sharper edges for clearer distinction
+          const edgeFactor = 1 - ellipseValue;
+          const sharpEdge = Math.max(0, edgeFactor - 0.1) / 0.9; // Sharper edge transition
+          cloudValue = Math.max(cloudValue, sharpEdge * 0.7); // Reduced intensity
+        }
+      }
+      
+      // Add some noise-based clouds for variety (minimal intensity)
+      const noiseValue = Math.max(0, noise(x * 0.03, y * 0.03) + 0.4) * 0.1;
+      cloudValue = Math.max(cloudValue, noiseValue);
+      
+      // Add wispy cloud details (minimal intensity)
+      const wispyValue = Math.max(0, noise(x * 0.08, y * 0.08) + 0.3) * 0.08;
+      cloudValue = Math.max(cloudValue, wispyValue);
+      
+      // Apply threshold to create clear cloud/no-cloud distinction
+      const cloudThreshold = 0.4; // Higher threshold for fewer clouds
+      if (cloudValue < cloudThreshold) {
+        cloudValue = 0; // Clear sky areas
+      } else {
+        // Normalize cloud values above threshold for better contrast
+        cloudValue = (cloudValue - cloudThreshold) / (1 - cloudThreshold);
+      }
+      
+      // Ensure cloud value is between 0 and 1
+      cloudValue = Math.min(1, cloudValue);
+      
+      // Convert to RGBA values (subdued white, no gradient)
+      const alpha = cloudValue > 0 ? 255 : 0; // White or transparent
+      
+      data[index] = 232;     // R - subdued white
+      data[index + 1] = 232; // G - subdued white
+      data[index + 2] = 232; // B - subdued white
+      data[index + 3] = alpha; // A - either 255 (white) or 0 (transparent)
+    }
+  }
+  
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.needsUpdate = true;
+  
+  return texture;
+};
+
+/**
  * Setup 3-light configuration for realistic planet lighting
  * Mimics Earth-Sun relationship with proper lighting direction
  */
@@ -207,7 +556,7 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 
   // Camera setup
   const camera = new THREE.PerspectiveCamera(
-    45, // FOV (reduced from 50 to prevent vertical stretching)
+    30, // FOV (even further reduced to prevent vertical distortion)
     gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
     0.1, // near
     100 // far
@@ -237,7 +586,8 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   const planet = createPlanetMesh();
   
   // Add very subtle white outline to planet
-  const outlineGeometry = new THREE.SphereGeometry(PLANET_RADIUS * 1.005, 32, 24);
+  const outlineGeometry = new THREE.SphereGeometry(PLANET_RADIUS * 1.005, 32, 32);
+  outlineGeometry.scale(1, 1, 1); // Ensure uniform scaling for outline
   const outlineMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
@@ -247,23 +597,33 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
   planet.add(outline);
   
-  // Add equator ring for visual rotation cue
-  const ringGeometry = new THREE.RingGeometry(PLANET_RADIUS * 0.995, PLANET_RADIUS * 1.005, 32);
+  // Create cloud layer mesh
+  cloudLayer = createCloudLayerMesh(PLANET_RADIUS);
+  
+  // Add equator ring with day/night gradient effect
+  const ringGeometry = new THREE.RingGeometry(PLANET_RADIUS * 0.98, PLANET_RADIUS * 1.02, 64); // More segments for smoother gradient
   const ringMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.3,
+    opacity: 0.5,
     side: THREE.DoubleSide,
   });
   const equatorRing = new THREE.Mesh(ringGeometry, ringMaterial);
   equatorRing.rotation.x = Math.PI / 2; // Rotate to be horizontal
   
-  // Add planet and equator ring to spin group
+  // Store reference for day/night updates
+  equatorRing.userData.isEquatorRing = true;
+  
+  // Add planet and equator ring to spin group (cloud layer stays independent)
   spinGroup.add(planet);
   spinGroup.add(equatorRing);
   
+  
   // Add spin group to tilt group
   tiltGroup.add(spinGroup);
+  
+  // Add cloud layer directly to tilt group (independent of planet rotation)
+  tiltGroup.add(cloudLayer);
   
   // Add tilt group to scene
   scene.add(tiltGroup);
@@ -284,11 +644,70 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 };
 
 /**
- * Generate stable spherical position for civilization
- * Limited to 0-70 degrees latitude (both north and south)
+ * Pre-defined regions for civilization placement
+ * 30 regions with varied latitude distribution on sphere surface (0° to 50°)
+ * Concentrated around equator like human civilizations
  */
-export const getCivilizationPosition = (civilization: Civilization, index: number): THREE.Vector3 => {
-  // Create stable position based on ID hash and index
+const CIVILIZATION_REGIONS = [
+  // Northern hemisphere regions (15 regions) - concentrated around equator
+  // Region 1-2: High latitude (45-50°N) - fewer regions
+  { longitude: 0, latitude: 45 },
+  { longitude: 120, latitude: 50 },
+  
+  // Region 3-5: Mid-high latitude (35-40°N) - moderate regions
+  { longitude: 180, latitude: 35 },
+  { longitude: 240, latitude: 40 },
+  { longitude: 300, latitude: 37 },
+  
+  // Region 6-8: Mid latitude (25-30°N) - moderate regions
+  { longitude: 30, latitude: 25 },
+  { longitude: 90, latitude: 30 },
+  { longitude: 150, latitude: 27 },
+  
+  // Region 9-12: Low-mid latitude (15-20°N) - more regions near equator
+  { longitude: 210, latitude: 15 },
+  { longitude: 270, latitude: 20 },
+  { longitude: 330, latitude: 17 },
+  { longitude: 45, latitude: 18 },
+  
+  // Region 13-15: Low latitude (5-10°N) - most regions near equator
+  { longitude: 105, latitude: 5 },
+  { longitude: 165, latitude: 10 },
+  { longitude: 225, latitude: 8 },
+  
+  // Southern hemisphere regions (15 regions) - concentrated around equator
+  // Region 16-17: High latitude (45-50°S) - fewer regions
+  { longitude: 285, latitude: -45 },
+  { longitude: 345, latitude: -50 },
+  
+  // Region 18-20: Mid-high latitude (35-40°S) - moderate regions
+  { longitude: 15, latitude: -35 },
+  { longitude: 75, latitude: -40 },
+  { longitude: 135, latitude: -37 },
+  
+  // Region 21-23: Mid latitude (25-30°S) - moderate regions
+  { longitude: 195, latitude: -25 },
+  { longitude: 255, latitude: -30 },
+  { longitude: 315, latitude: -27 },
+  
+  // Region 24-27: Low-mid latitude (15-20°S) - more regions near equator
+  { longitude: 30, latitude: -15 },
+  { longitude: 90, latitude: -20 },
+  { longitude: 150, latitude: -17 },
+  { longitude: 210, latitude: -18 },
+  
+  // Region 28-30: Low latitude (5-10°S) - most regions near equator
+  { longitude: 270, latitude: -5 },
+  { longitude: 330, latitude: -10 },
+  { longitude: 60, latitude: -8 },
+];
+
+/**
+ * Assign a region to a civilization randomly from available regions
+ * Uses civilization ID hash for deterministic but random-like assignment
+ */
+const assignRegionToCivilization = (civilization: Civilization, existingCivilizations: Civilization[]): number => {
+  // Create a hash from civilization ID for deterministic assignment
   const hash = civilization.id.split('').reduce((a, b) => {
     // eslint-disable-next-line no-bitwise
     a = ((a << 5) - a) + b.charCodeAt(0);
@@ -296,21 +715,91 @@ export const getCivilizationPosition = (civilization: Civilization, index: numbe
     return a & a;
   }, 0);
   
-  // Convert hash to spherical coordinates
-  const phi = (Math.abs(hash) % 1000) / 1000 * Math.PI * 2; // Longitude (0-360 degrees)
+  // Get used regions from existing civilizations
+  const usedRegions = new Set<number>();
+  existingCivilizations.forEach(civ => {
+    const regionIndex = getCivilizationRegionIndex(civ.id);
+    if (regionIndex !== -1) {
+      usedRegions.add(regionIndex);
+    }
+  });
   
-  // Latitude limited to 0-70 degrees (both north and south)
-  // Convert 0-70 degrees to radians: 0 to 70*π/180
-  const maxLatitudeRadians = 70 * Math.PI / 180; // 70 degrees in radians
-  const latitudeRange = maxLatitudeRadians * 2; // Total range: -70 to +70 degrees
-  const theta = (index * 0.618034) % 1 * latitudeRange + (Math.PI / 2 - maxLatitudeRadians);
+  // Find available regions
+  const availableRegions = [];
+  for (let i = 0; i < CIVILIZATION_REGIONS.length; i++) {
+    if (!usedRegions.has(i)) {
+      availableRegions.push(i);
+    }
+  }
+  
+  // If all regions are used, assign based on hash (shouldn't happen with 20 regions and max 10 civilizations)
+  if (availableRegions.length === 0) {
+    return Math.abs(hash) % CIVILIZATION_REGIONS.length;
+  }
+  
+  // Randomly assign from available regions using hash as seed
+  return availableRegions[Math.abs(hash) % availableRegions.length];
+};
+
+/**
+ * Get the region index for a civilization based on its ID
+ * This is used to check which regions are already occupied
+ */
+const getCivilizationRegionIndex = (civilizationId: string): number => {
+  // For sample data, assign regions concentrated around equator like human civilizations
+  const sampleRegionMap: Record<string, number> = {
+    'sample-civ-1': 13, // Low latitude (5°N) - 持続可能なエネルギー開発
+    'sample-civ-2': 28, // Low latitude (5°S) - 海洋環境保護プロジェクト
+    'sample-civ-3': 14, // Low latitude (10°N) - 宇宙探査技術革新
+    'sample-civ-4': 24, // Low-mid latitude (15°S) - 古代文明の謎解き
+    'sample-civ-5': 9, // Low-mid latitude (15°N) - AI倫理ガイドライン策定
+  };
+  
+  if (sampleRegionMap[civilizationId] !== undefined) {
+    return sampleRegionMap[civilizationId];
+  }
+  
+  // For other civilizations, use hash-based assignment
+  const hash = civilizationId.split('').reduce((a, b) => {
+    // eslint-disable-next-line no-bitwise
+    a = ((a << 5) - a) + b.charCodeAt(0);
+    // eslint-disable-next-line no-bitwise
+    return a & a;
+  }, 0);
+  
+  return Math.abs(hash) % CIVILIZATION_REGIONS.length;
+};
+
+/**
+ * Generate stable spherical position for civilization
+ * Uses pre-defined regions to ensure even distribution
+ * Accounts for Earth's axis tilt (15 degrees)
+ */
+export const getCivilizationPosition = (civilization: Civilization, index: number, existingCivilizations: Civilization[] = []): THREE.Vector3 => {
+  // Assign a region to this civilization
+  const regionIndex = assignRegionToCivilization(civilization, existingCivilizations);
+  const region = CIVILIZATION_REGIONS[regionIndex];
+  
+  // Convert degrees to radians
+  const phi = (region.longitude * Math.PI) / 180; // Longitude
+  const theta = ((90 - region.latitude) * Math.PI) / 180; // Latitude (convert to spherical coordinates)
   
   // Convert to Cartesian coordinates on sphere surface
-  const x = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.cos(phi); // Slightly outside planet
-  const y = PLANET_RADIUS * 1.01 * Math.cos(theta);
-  const z = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.sin(phi);
+  let x = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.cos(phi);
+  let y = PLANET_RADIUS * 1.01 * Math.cos(theta);
+  let z = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.sin(phi);
   
-  return new THREE.Vector3(x, y, z);
+  // Apply Earth's axis tilt rotation around Z-axis
+  // This rotates the entire coordinate system to match the tilted planet
+  const cosTilt = Math.cos(EARTH_AXIS_TILT);
+  const sinTilt = Math.sin(EARTH_AXIS_TILT);
+  
+  // Rotate around Z-axis (Y-axis tilt)
+  const newX = x * cosTilt - y * sinTilt;
+  const newY = x * sinTilt + y * cosTilt;
+  const newZ = z;
+  
+  return new THREE.Vector3(newX, newY, newZ);
 };
 
 /**
@@ -321,7 +810,43 @@ const hexToThreeColor = (hexString: string): number => {
 };
 
 /**
- * Get marker color based on civilization state (consistent with UI theme)
+ * Get marker color based on civilization level (consistent with UI theme)
+ */
+export const getMarkerColorByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return hexToThreeColor(colors.grassland);
+    case 'village':
+      return hexToThreeColor(colors.village);
+    case 'town':
+      return hexToThreeColor(colors.town);
+    case 'city':
+      return hexToThreeColor(colors.city);
+    default:
+      return hexToThreeColor(colors.grassland);
+  }
+};
+
+/**
+ * Get marker size based on civilization level (growth level affects land size)
+ */
+export const getMarkerSizeByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return 1.2; // Smallest - natural, undeveloped (increased from 0.8)
+    case 'village':
+      return 1.5; // Small - simple rural development (increased from 1.0)
+    case 'town':
+      return 1.9; // Medium - moderate development (increased from 1.3)
+    case 'city':
+      return 2.4; // Largest - advanced urban development (increased from 1.6)
+    default:
+      return 1.2;
+  }
+};
+
+/**
+ * Get marker color based on civilization state (legacy support)
  */
 export const getMarkerColor = (state: CivState): number => {
   switch (state) {
@@ -345,18 +870,92 @@ export const createCivilizationMarker = (
   civilization: Civilization,
   position: THREE.Vector3
 ): THREE.Mesh => {
-  const markerGeometry = new THREE.SphereGeometry(0.03, 16, 12); // Small smooth sphere
+  // Use new level system if available, fallback to legacy state system
+  const markerColor = civilization.levels 
+    ? getMarkerColorByLevel(civilization.levels.classification)
+    : getMarkerColor(civilization.state);
+  
+  const markerSize = civilization.levels 
+    ? getMarkerSizeByLevel(civilization.levels.classification)
+    : 1.0; // Default size for legacy state system
+  
+  // Debug logging
+  console.log(`Creating marker for ${civilization.name}:`, {
+    level: civilization.levels?.classification,
+    color: markerColor.toString(16),
+    size: markerSize
+  });
+  
+  // Create sphere geometry for civilization markers
+  const baseRadius = 0.04 * markerSize; // Increased base size from 0.03
+  const markerGeometry = new THREE.SphereGeometry(baseRadius, 16, 12);
   const markerMaterial = new THREE.MeshStandardMaterial({
-    color: getMarkerColor(civilization.state),
+    color: markerColor,
     metalness: 0.1,
     roughness: 0.3,
-    emissive: getMarkerColor(civilization.state),
+    emissive: markerColor,
     emissiveIntensity: 0.2,
+    transparent: true, // Enable transparency for night darkening
+    opacity: 1.0, // Default opacity (will be changed at night)
   });
   
   const marker = new THREE.Mesh(markerGeometry, markerMaterial);
   marker.position.copy(position);
-  marker.userData = { civilizationId: civilization.id }; // Store ID for raycasting
+  
+  // Apply gravity-like flattening towards planet center
+  // Calculate the normal direction from planet center to marker position
+  const planetCenter = new THREE.Vector3(0, 0, 0);
+  const normalDirection = position.clone().normalize();
+  
+  // Create a transformation matrix that flattens the marker towards the planet center
+  // This simulates gravity pulling the marker down towards the surface
+  const flattenFactor = 0.5; // How much to flatten (0.5 = 50% of original height - more flattened)
+  
+  // Create a custom transformation that compresses along the normal direction
+  const scaleMatrix = new THREE.Matrix4();
+  const identityMatrix = new THREE.Matrix4().identity();
+  
+  // Calculate the scaling factors for each axis
+  // We want to compress along the normal direction (towards planet center)
+  const normalX = normalDirection.x;
+  const normalY = normalDirection.y;
+  const normalZ = normalDirection.z;
+  
+  // Create a transformation that flattens along the normal direction
+  // This is more complex than simple axis scaling - we need to transform along the surface normal
+  const flattenScale = flattenFactor;
+  const preserveScale = 1.0;
+  
+  // Apply the flattening transformation
+  // Scale down along the normal direction, preserve other directions
+  const transformMatrix = new THREE.Matrix4();
+  
+  // Calculate the scaling matrix components
+  const xx = preserveScale + (flattenScale - preserveScale) * normalX * normalX;
+  const xy = (flattenScale - preserveScale) * normalX * normalY;
+  const xz = (flattenScale - preserveScale) * normalX * normalZ;
+  const yx = (flattenScale - preserveScale) * normalY * normalX;
+  const yy = preserveScale + (flattenScale - preserveScale) * normalY * normalY;
+  const yz = (flattenScale - preserveScale) * normalY * normalZ;
+  const zx = (flattenScale - preserveScale) * normalZ * normalX;
+  const zy = (flattenScale - preserveScale) * normalZ * normalY;
+  const zz = preserveScale + (flattenScale - preserveScale) * normalZ * normalZ;
+  
+  transformMatrix.set(
+    xx, xy, xz, 0,
+    yx, yy, yz, 0,
+    zx, zy, zz, 0,
+    0,  0,  0,  1
+  );
+  
+  // Apply the transformation to the geometry
+  markerGeometry.applyMatrix4(transformMatrix);
+  
+  marker.userData = { 
+    civilizationId: civilization.id,
+    civilizationState: civilization.state, // Store state for light intensity calculation
+    civilizationLevel: civilization.levels?.classification // Store level for new system
+  };
   
   return marker;
 };
@@ -382,7 +981,8 @@ export const updateCivilizationMarkers = (
       return; // Don't render ocean civilizations
     }
 
-    const position = getCivilizationPosition(civilization, index);
+    // Pass existing civilizations to ensure proper region assignment
+    const position = getCivilizationPosition(civilization, index, civilizations);
     const marker = createCivilizationMarker(civilization, position);
     
     if (spinGroup) {
@@ -393,27 +993,42 @@ export const updateCivilizationMarkers = (
 };
 
 /**
- * Update single marker color when state changes
+ * Update single marker when civilization changes
  */
 export const updateMarkerState = (
   scene: PlanetScene,
   civilizationId: string,
-  newState: CivState
+  civilization: Civilization
 ): void => {
   const marker = scene.markers.get(civilizationId);
   if (marker) {
-    if (newState === 'ocean') {
+    if (civilization.state === 'ocean') {
       // Remove marker for ocean state
       if (spinGroup) {
         spinGroup.remove(marker);
       }
       scene.markers.delete(civilizationId);
     } else {
-      // Update marker color and emissive
+      // Update marker color, size, and emissive based on new level system
       const material = marker.material as THREE.MeshStandardMaterial;
-      const newColor = getMarkerColor(newState);
+      
+      // Use new level system if available, fallback to legacy state system
+      const newColor = civilization.levels 
+        ? getMarkerColorByLevel(civilization.levels.classification)
+        : getMarkerColor(civilization.state);
+      
       material.color.setHex(newColor);
       material.emissive.setHex(newColor);
+      
+      // Update marker size if level system is available
+      if (civilization.levels) {
+        const newSize = getMarkerSizeByLevel(civilization.levels.classification);
+        marker.scale.setScalar(newSize);
+      }
+      
+      // Update userData with new state and level for light intensity calculation
+      marker.userData.civilizationState = civilization.state;
+      marker.userData.civilizationLevel = civilization.levels?.classification;
     }
   }
 };
@@ -426,9 +1041,13 @@ export const resizeScene = (
   width: number,
   height: number
 ): void => {
-  scene.camera.aspect = width / height;
+  const aspectRatio = width / height;
+  scene.camera.aspect = aspectRatio;
   scene.camera.updateProjectionMatrix();
   scene.renderer.setSize(width, height);
+  
+  // Ensure proper aspect ratio to prevent sphere distortion
+  console.log(`Screen resize: ${width}x${height}, aspect ratio: ${aspectRatio.toFixed(2)}`);
 };
 
 /**
@@ -474,15 +1093,22 @@ export const rotatePlanet = (
 ): void => {
   // Apply rotation to spin group for intuitive XYZ rotation
   if (spinGroup) {
-    // Horizontal swipe (deltaX) rotates around Y-axis
-    const yRotation = deltaX * sensitivity;
+    // Horizontal swipe (deltaX) rotates around Y-axis (correct direction)
+    const yRotation = deltaX * sensitivity; // Correct direction
     spinGroup.rotation.y += yRotation;
     
     // Update day/night angle to match current rotation
     dayNightAngle = spinGroup.rotation.y;
     
-    // Vertical swipe (deltaY) rotates around X-axis
-    spinGroup.rotation.x += deltaY * sensitivity;
+    // Stop cloud layer rotation during manual gestures
+    // Keep cloud layer at its current position
+    if (cloudLayer) {
+      // Don't update cloud rotation or day/night states during manual rotation
+      // Cloud layer stays fixed relative to the scene
+    }
+    
+    // Vertical swipe (deltaY) rotates around X-axis (correct direction)
+    spinGroup.rotation.x += deltaY * sensitivity; // Correct direction
   }
 };
 
@@ -519,6 +1145,7 @@ export const disposeScene = (scene: PlanetScene): void => {
   // Clear global references
   tiltGroup = null;
   spinGroup = null;
+  cloudLayer = null;
   directionalLight = null;
   
   // Dispose geometries and materials

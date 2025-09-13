@@ -12,6 +12,12 @@ export const colors = {
   error: '#C75B5B',          // Calm red - collapse/failure
   accent: '#D9B86C',         // Gold - achievements, highlights
   
+  // Civilization level colors - progression from nature to urban
+  grassland: '#7CFC00',      // Lime green - life sprouting, beginning excitement
+  village: '#DAA520',        // Goldenrod - warm village lights and harvest
+  town: '#FF8C00',           // Dark orange - vibrant markets and bustling buildings
+  city: '#FFD700',           // Gold - luxurious city prosperity with white highlights
+  
   // Dark cosmic background - optimized for all lighting conditions
   background: '#0A0A0F',     // Deep cosmic black (slightly lighter for day viewing)
   surface: '#1A1B22',        // Dark surface with subtle contrast
