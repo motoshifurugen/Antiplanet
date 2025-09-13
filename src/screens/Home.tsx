@@ -26,6 +26,8 @@ import {
   resizeScene,
   disposeScene,
   startIdleAnimation,
+  startGesture,
+  endGesture,
 } from '../lib/three';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -164,6 +166,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handlePanStateChange = (event: any) => {
     if (event.nativeEvent.state === State.BEGAN) {
       lastPanRef.current = { x: 0, y: 0 };
+      startGesture(); // Start gesture - pause idle rotation
+    } else if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
+      if (scene) endGesture(scene); // End gesture - resume idle rotation
     }
   };
 
@@ -182,6 +187,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handlePinchStateChange = (event: any) => {
     if (event.nativeEvent.state === State.BEGAN) {
       lastScaleRef.current = 1;
+      startGesture(); // Start gesture - pause idle rotation
+    } else if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
+      if (scene) endGesture(scene); // End gesture - resume idle rotation
     }
   };
 

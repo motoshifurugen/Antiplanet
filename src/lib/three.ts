@@ -29,26 +29,42 @@ const PLANET_RADIUS = 0.5; // Much smaller planet for better screen fit
 const CAMERA_MIN_DISTANCE = 1.2; // Adjusted for much smaller planet
 const CAMERA_MAX_DISTANCE = 4.0; // Adjusted for much smaller planet
 const CAMERA_INITIAL_DISTANCE = 2.2; // Adjusted for much smaller planet
-const EARTH_AXIS_TILT = 23.4 * Math.PI / 180; // 23.4 degrees in radians
+const EARTH_AXIS_TILT = 15 * Math.PI / 180; // 15 degrees in radians
 
 // Global references for scene graph
 let tiltGroup: THREE.Group | null = null;
 let spinGroup: THREE.Group | null = null;
 
-// Simple animation state
+// Animation state
 let animationInterval: NodeJS.Timeout | null = null;
 let isAnimating = false;
 
+// Day/night system state
+let dayNightAngle = 0; // Current day/night rotation angle
+let cameraAngle = 0; // Current camera viewing angle
+
+// Gesture state management
+let isGestureActive = false;
+
+// Global light reference for rotation
+let directionalLight: THREE.DirectionalLight | null = null;
+
 /**
- * Start simple idle rotation
+ * Start day/night rotation (planet spins, lighting stays fixed)
  */
 export const startIdleAnimation = (scene: PlanetScene): void => {
   if (isAnimating) return;
   
   isAnimating = true;
   animationInterval = setInterval(() => {
-    if (spinGroup) {
-      spinGroup.rotation.y += 0.01; // Slow rotation
+    if (spinGroup && !isGestureActive) {
+      // Update day/night angle (planet rotation) only when not gesturing
+      dayNightAngle += 0.01; // Slow rotation
+      spinGroup.rotation.y = dayNightAngle;
+      
+      // Update marker day/night states based on rotation
+      updateMarkerDayNightStates(scene);
+      
       scene.renderer.render(scene.scene, scene.camera);
       (scene.renderer.getContext() as any).endFrameEXP();
     }
@@ -64,6 +80,58 @@ export const stopIdleAnimation = (): void => {
     clearInterval(animationInterval);
     animationInterval = null;
   }
+};
+
+/**
+ * Start gesture (pause idle rotation)
+ */
+export const startGesture = (): void => {
+  isGestureActive = true;
+};
+
+/**
+ * End gesture (resume idle rotation)
+ */
+export const endGesture = (scene: PlanetScene): void => {
+  isGestureActive = false;
+  
+  // Update marker day/night states immediately after gesture ends
+  if (scene) {
+    updateMarkerDayNightStates(scene);
+  }
+};
+
+/**
+ * Update marker day/night states based on planet rotation
+ */
+const updateMarkerDayNightStates = (scene: PlanetScene): void => {
+  scene.markers.forEach((marker, civilizationId) => {
+    // Get marker position in world coordinates
+    const worldPosition = new THREE.Vector3();
+    marker.getWorldPosition(worldPosition);
+    
+    // Calculate if marker is in day or night based on its position
+    // Sun light comes from (25, 0, 8) direction
+    // Calculate dot product with sun direction for accurate day/night
+    const sunDirection = new THREE.Vector3(25, 0, 8).normalize();
+    const markerDirection = worldPosition.normalize();
+    const dotProduct = markerDirection.dot(sunDirection);
+    // Adjust threshold to match lighting - lights turn off later
+    const isDay = dotProduct > 0.1; // Threshold adjusted to delay light turn-off
+    
+    // Update marker appearance based on day/night
+    // Night = lights on (bright), Day = lights off (dim)
+    const material = marker.material as THREE.MeshStandardMaterial;
+    if (isDay) {
+      // Day: lights off, dim colors
+      material.emissive.setHex(0x111133);
+      material.emissiveIntensity = 0.1;
+    } else {
+      // Night: lights on, bright warm colors
+      material.emissive.setHex(0x666644);
+      material.emissiveIntensity = 0.4;
+    }
+  });
 };
 
 /**
@@ -116,11 +184,10 @@ export const setupLights = (scene: THREE.Scene): void => {
   const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.2);
   scene.add(ambientLight);
   
-  // Directional light - warm sunlight from the "sun" direction
-  // Positioned to simulate sun coming from a specific direction
-  // This creates realistic day/night terminator line
-  const directionalLight = new THREE.DirectionalLight(0xffd89b, 1.5);
-  directionalLight.position.set(5, 2, 3); // Sun-like position
+  // Directional light - warm sunlight from front and to the side
+  // Positioned to create better day/night ratio when viewed from front
+  directionalLight = new THREE.DirectionalLight(0xffd89b, 3.0);
+  directionalLight.position.set(25, 0, 8); // Sun from front and to the side (moved closer)
   directionalLight.castShadow = false; // No shadows for performance
   scene.add(directionalLight);
   
@@ -140,7 +207,7 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 
   // Camera setup
   const camera = new THREE.PerspectiveCamera(
-    50, // FOV
+    45, // FOV (reduced from 50 to prevent vertical stretching)
     gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
     0.1, // near
     100 // far
@@ -163,7 +230,8 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   spinGroup = new THREE.Group();
   
   // Apply Earth's axis tilt to tilt group (23.4 degrees)
-  tiltGroup.rotation.x = EARTH_AXIS_TILT;
+  // Rotate around Z-axis to tilt rightward instead of forward
+  tiltGroup.rotation.z = EARTH_AXIS_TILT;
   
   // Create smooth planet mesh
   const planet = createPlanetMesh();
@@ -395,7 +463,8 @@ export const detectMarkerHit = (
 };
 
 /**
- * Apply camera rotation around tilted planet axis (Y-axis only)
+ * Rotate camera around planet (viewpoint switching)
+ * This changes what part of the planet we're looking at
  */
 export const rotatePlanet = (
   scene: PlanetScene,
@@ -403,14 +472,17 @@ export const rotatePlanet = (
   deltaY: number,
   sensitivity: number = 0.005
 ): void => {
-  // Only rotate around Y-axis (horizontal rotation)
-  // Ignore deltaY to prevent vertical movement
-  // Match swipe direction with rotation direction (no reverse)
-  const rotationAmount = deltaX * sensitivity;
-  
-  // Apply rotation to spin group
+  // Apply rotation to spin group for intuitive XYZ rotation
   if (spinGroup) {
-    spinGroup.rotation.y += rotationAmount;
+    // Horizontal swipe (deltaX) rotates around Y-axis
+    const yRotation = deltaX * sensitivity;
+    spinGroup.rotation.y += yRotation;
+    
+    // Update day/night angle to match current rotation
+    dayNightAngle = spinGroup.rotation.y;
+    
+    // Vertical swipe (deltaY) rotates around X-axis
+    spinGroup.rotation.x += deltaY * sensitivity;
   }
 };
 
@@ -447,6 +519,7 @@ export const disposeScene = (scene: PlanetScene): void => {
   // Clear global references
   tiltGroup = null;
   spinGroup = null;
+  directionalLight = null;
   
   // Dispose geometries and materials
   scene.scene.traverse((object) => {
