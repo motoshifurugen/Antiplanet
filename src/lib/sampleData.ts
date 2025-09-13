@@ -74,6 +74,18 @@ export const createSampleCivilizations = (): Civilization[] => {
       createdAt: now - (20 * oneDayMs), // 20 days ago
       updatedAt: now - (1 * oneDayMs),
     },
+
+    // 6. Level 4 developing civilization (not ocean state) - recently active
+    {
+      id: 'sample-civ-6',
+      name: '量子コンピューティング研究',
+      purpose: '量子アルゴリズムの実装と最適化技術の開発',
+      deadline: '2025-01-30',
+      state: 'developing' as CivState,
+      lastProgressAt: now - (3 * oneDayMs), // 3 days ago
+      createdAt: now - (15 * oneDayMs), // 15 days ago
+      updatedAt: now - (3 * oneDayMs),
+    },
   ];
 };
 
