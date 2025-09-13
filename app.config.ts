@@ -10,6 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'antiplanet',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
+  sdkVersion: '54.0.0',
   splash: {
     image: './assets/images/splash-icon.png',
     resizeMode: 'contain',

@@ -31,6 +31,45 @@ const CAMERA_MAX_DISTANCE = 6;
 const CAMERA_INITIAL_DISTANCE = 3.5;
 
 /**
+ * Create smooth planet mesh with PBR material
+ */
+export const createPlanetMesh = (): THREE.Mesh => {
+  // Smooth sphere geometry with 64 segments for quality
+  const planetGeometry = new THREE.SphereGeometry(PLANET_RADIUS, 64, 48);
+  
+  // PBR material with ocean blue base and subtle gradient
+  const planetMaterial = new THREE.MeshStandardMaterial({
+    color: 0x4a90e2, // Ocean blue base
+    metalness: 0, // Non-metallic surface
+    roughness: 0.9, // Soft, diffuse surface
+    emissive: 0x001122, // Subtle blue glow
+    emissiveIntensity: 0.1,
+  });
+  
+  const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+  return planet;
+};
+
+/**
+ * Setup 3-light configuration for realistic planet lighting
+ */
+export const setupLights = (scene: THREE.Scene): void => {
+  // Ambient light - dark bluish tint for space atmosphere
+  const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.3);
+  scene.add(ambientLight);
+  
+  // Directional light - warm sunlight from top-right
+  const directionalLight = new THREE.DirectionalLight(0xffd89b, 1.2);
+  directionalLight.position.set(2, 3, 1);
+  directionalLight.castShadow = false; // No shadows for performance
+  scene.add(directionalLight);
+  
+  // Hemisphere light - subtle sky/ground color mixing
+  const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x2c3e50, 0.4);
+  scene.add(hemisphereLight);
+};
+
+/**
  * Create and initialize 3D planet scene
  */
 export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene => {
@@ -47,26 +86,19 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   );
   camera.position.set(0, 0, CAMERA_INITIAL_DISTANCE);
 
-  // Renderer setup
+  // Renderer setup with PBR configuration
   const renderer = new Renderer({ gl });
   renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
   renderer.shadowMap.enabled = false; // Keep performance simple
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
   
-  // Lighting setup
-  const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Soft ambient
-  scene.add(ambientLight);
-  
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(1, 1, 1);
-  scene.add(directionalLight);
+  // Setup lighting
+  setupLights(scene);
 
-  // Planet geometry - low poly sphere
-  const planetGeometry = new THREE.IcosahedronGeometry(PLANET_RADIUS, 1); // Low subdivision
-  const planetMaterial = new THREE.MeshLambertMaterial({ 
-    color: 0x4a90e2,
-    wireframe: false 
-  });
-  const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+  // Create smooth planet mesh
+  const planet = createPlanetMesh();
   scene.add(planet);
 
   // Interaction setup
@@ -140,9 +172,13 @@ export const createCivilizationMarker = (
   civilization: Civilization,
   position: THREE.Vector3
 ): THREE.Mesh => {
-  const markerGeometry = new THREE.SphereGeometry(0.03, 8, 6); // Small low-poly sphere
-  const markerMaterial = new THREE.MeshLambertMaterial({
+  const markerGeometry = new THREE.SphereGeometry(0.03, 16, 12); // Small smooth sphere
+  const markerMaterial = new THREE.MeshStandardMaterial({
     color: getMarkerColor(civilization.state),
+    metalness: 0.1,
+    roughness: 0.3,
+    emissive: getMarkerColor(civilization.state),
+    emissiveIntensity: 0.2,
   });
   
   const marker = new THREE.Mesh(markerGeometry, markerMaterial);
@@ -194,10 +230,11 @@ export const updateMarkerState = (
       scene.scene.remove(marker);
       scene.markers.delete(civilizationId);
     } else {
-      // Update marker color
-      (marker.material as THREE.MeshLambertMaterial).color.setHex(
-        getMarkerColor(newState)
-      );
+      // Update marker color and emissive
+      const material = marker.material as THREE.MeshStandardMaterial;
+      const newColor = getMarkerColor(newState);
+      material.color.setHex(newColor);
+      material.emissive.setHex(newColor);
     }
   }
 };

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import {
-  PanGestureHandler,
-  PinchGestureHandler,
-  TapGestureHandler,
-  State,
-} from 'react-native-gesture-handler';
+// Temporarily disabled gesture handlers to fix NativeWorklets error
+// import {
+//   PanGestureHandler,
+//   PinchGestureHandler,
+//   TapGestureHandler,
+//   State,
+// } from 'react-native-gesture-handler';
 import { GLView } from 'expo-gl';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -397,27 +398,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            {/* 3D Planet View */}
-            <TapGestureHandler onGestureEvent={handleTapGestureEvent}>
-              <PinchGestureHandler
-                onGestureEvent={handlePinchGestureEvent}
-                onHandlerStateChange={handlePinchStateChange}
-              >
-                <PanGestureHandler
-                  onGestureEvent={handlePanGestureEvent}
-                  onHandlerStateChange={handlePanStateChange}
-                >
-                  <GLView
-                    style={styles.glView}
-                    onContextCreate={handleContextCreate}
-                    onLayout={(event) => {
-                      const { width, height } = event.nativeEvent.layout;
-                      handleResize(width, height);
-                    }}
-                  />
-                </PanGestureHandler>
-              </PinchGestureHandler>
-            </TapGestureHandler>
+            {/* 3D Planet View - Temporarily disabled gesture handlers */}
+            <GLView
+              style={styles.glView}
+              onContextCreate={handleContextCreate}
+              onLayout={(event) => {
+                const { width, height } = event.nativeEvent.layout;
+                handleResize(width, height);
+              }}
+            />
           </View>
         )}
 
