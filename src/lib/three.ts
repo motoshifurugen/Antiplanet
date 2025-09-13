@@ -102,6 +102,45 @@ export const endGesture = (scene: PlanetScene): void => {
 };
 
 /**
+ * Get light intensity based on civilization state (rank)
+ * Higher rank civilizations have stronger lights
+ * Balanced to not overwhelm the planet's atmosphere
+ */
+const getLightIntensityByState = (state: CivState): number => {
+  switch (state) {
+    case 'uninitialized':
+      return 0.12; // Very dim light for uninitialized
+    case 'developing':
+      return 0.45; // Bright but not overwhelming light for developing civilizations
+    case 'decaying':
+      return 0.25; // Moderate light for decaying civilizations
+    case 'ocean':
+      return 0.05; // Very dim light for ocean civilizations (shouldn't be visible)
+    default:
+      return 0.18;
+  }
+};
+
+/**
+ * Get night light color based on civilization state
+ * Creates warm, atmospheric lighting for night side
+ */
+const getNightLightColorByState = (state: CivState): number => {
+  switch (state) {
+    case 'uninitialized':
+      return 0x333355; // Cool blue-white for uninitialized
+    case 'developing':
+      return 0x888844; // Warm golden light for developing civilizations
+    case 'decaying':
+      return 0x666633; // Dimmer amber light for decaying civilizations
+    case 'ocean':
+      return 0x222244; // Very dim blue for ocean civilizations
+    default:
+      return 0x444466;
+  }
+};
+
+/**
  * Update marker day/night states based on planet rotation
  */
 const updateMarkerDayNightStates = (scene: PlanetScene): void => {
@@ -127,9 +166,14 @@ const updateMarkerDayNightStates = (scene: PlanetScene): void => {
       material.emissive.setHex(0x111133);
       material.emissiveIntensity = 0.1;
     } else {
-      // Night: lights on, bright warm colors
-      material.emissive.setHex(0x666644);
-      material.emissiveIntensity = 0.4;
+      // Night: lights on, intensity and color based on civilization state
+      // Get civilization state from marker userData
+      const civilizationState = marker.userData.civilizationState as CivState;
+      const lightIntensity = getLightIntensityByState(civilizationState);
+      const nightLightColor = getNightLightColorByState(civilizationState);
+      
+      material.emissive.setHex(nightLightColor);
+      material.emissiveIntensity = lightIntensity;
     }
   });
 };
@@ -138,8 +182,8 @@ const updateMarkerDayNightStates = (scene: PlanetScene): void => {
  * Create smooth planet mesh with PBR material
  */
 export const createPlanetMesh = (): THREE.Mesh => {
-  // Smooth sphere geometry with 64 segments for quality
-  const planetGeometry = new THREE.SphereGeometry(PLANET_RADIUS, 64, 48);
+  // Smooth sphere geometry with proper aspect ratio to prevent distortion
+  const planetGeometry = new THREE.SphereGeometry(PLANET_RADIUS, 64, 64);
   
   // PBR material with ocean blue base and subtle gradient
   const planetMaterial = new THREE.MeshStandardMaterial({
@@ -207,7 +251,7 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 
   // Camera setup
   const camera = new THREE.PerspectiveCamera(
-    45, // FOV (reduced from 50 to prevent vertical stretching)
+    50, // FOV (adjusted for better planet appearance)
     gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
     0.1, // near
     100 // far
@@ -237,7 +281,7 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   const planet = createPlanetMesh();
   
   // Add very subtle white outline to planet
-  const outlineGeometry = new THREE.SphereGeometry(PLANET_RADIUS * 1.005, 32, 24);
+  const outlineGeometry = new THREE.SphereGeometry(PLANET_RADIUS * 1.005, 32, 32);
   const outlineMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
@@ -284,11 +328,70 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 };
 
 /**
- * Generate stable spherical position for civilization
- * Limited to 0-70 degrees latitude (both north and south)
+ * Pre-defined regions for civilization placement
+ * 30 regions with varied latitude distribution on sphere surface (0° to 50°)
+ * Concentrated around equator like human civilizations
  */
-export const getCivilizationPosition = (civilization: Civilization, index: number): THREE.Vector3 => {
-  // Create stable position based on ID hash and index
+const CIVILIZATION_REGIONS = [
+  // Northern hemisphere regions (15 regions) - concentrated around equator
+  // Region 1-2: High latitude (45-50°N) - fewer regions
+  { longitude: 0, latitude: 45 },
+  { longitude: 120, latitude: 50 },
+  
+  // Region 3-5: Mid-high latitude (35-40°N) - moderate regions
+  { longitude: 180, latitude: 35 },
+  { longitude: 240, latitude: 40 },
+  { longitude: 300, latitude: 37 },
+  
+  // Region 6-8: Mid latitude (25-30°N) - moderate regions
+  { longitude: 30, latitude: 25 },
+  { longitude: 90, latitude: 30 },
+  { longitude: 150, latitude: 27 },
+  
+  // Region 9-12: Low-mid latitude (15-20°N) - more regions near equator
+  { longitude: 210, latitude: 15 },
+  { longitude: 270, latitude: 20 },
+  { longitude: 330, latitude: 17 },
+  { longitude: 45, latitude: 18 },
+  
+  // Region 13-15: Low latitude (5-10°N) - most regions near equator
+  { longitude: 105, latitude: 5 },
+  { longitude: 165, latitude: 10 },
+  { longitude: 225, latitude: 8 },
+  
+  // Southern hemisphere regions (15 regions) - concentrated around equator
+  // Region 16-17: High latitude (45-50°S) - fewer regions
+  { longitude: 285, latitude: -45 },
+  { longitude: 345, latitude: -50 },
+  
+  // Region 18-20: Mid-high latitude (35-40°S) - moderate regions
+  { longitude: 15, latitude: -35 },
+  { longitude: 75, latitude: -40 },
+  { longitude: 135, latitude: -37 },
+  
+  // Region 21-23: Mid latitude (25-30°S) - moderate regions
+  { longitude: 195, latitude: -25 },
+  { longitude: 255, latitude: -30 },
+  { longitude: 315, latitude: -27 },
+  
+  // Region 24-27: Low-mid latitude (15-20°S) - more regions near equator
+  { longitude: 30, latitude: -15 },
+  { longitude: 90, latitude: -20 },
+  { longitude: 150, latitude: -17 },
+  { longitude: 210, latitude: -18 },
+  
+  // Region 28-30: Low latitude (5-10°S) - most regions near equator
+  { longitude: 270, latitude: -5 },
+  { longitude: 330, latitude: -10 },
+  { longitude: 60, latitude: -8 },
+];
+
+/**
+ * Assign a region to a civilization randomly from available regions
+ * Uses civilization ID hash for deterministic but random-like assignment
+ */
+const assignRegionToCivilization = (civilization: Civilization, existingCivilizations: Civilization[]): number => {
+  // Create a hash from civilization ID for deterministic assignment
   const hash = civilization.id.split('').reduce((a, b) => {
     // eslint-disable-next-line no-bitwise
     a = ((a << 5) - a) + b.charCodeAt(0);
@@ -296,21 +399,91 @@ export const getCivilizationPosition = (civilization: Civilization, index: numbe
     return a & a;
   }, 0);
   
-  // Convert hash to spherical coordinates
-  const phi = (Math.abs(hash) % 1000) / 1000 * Math.PI * 2; // Longitude (0-360 degrees)
+  // Get used regions from existing civilizations
+  const usedRegions = new Set<number>();
+  existingCivilizations.forEach(civ => {
+    const regionIndex = getCivilizationRegionIndex(civ.id);
+    if (regionIndex !== -1) {
+      usedRegions.add(regionIndex);
+    }
+  });
   
-  // Latitude limited to 0-70 degrees (both north and south)
-  // Convert 0-70 degrees to radians: 0 to 70*π/180
-  const maxLatitudeRadians = 70 * Math.PI / 180; // 70 degrees in radians
-  const latitudeRange = maxLatitudeRadians * 2; // Total range: -70 to +70 degrees
-  const theta = (index * 0.618034) % 1 * latitudeRange + (Math.PI / 2 - maxLatitudeRadians);
+  // Find available regions
+  const availableRegions = [];
+  for (let i = 0; i < CIVILIZATION_REGIONS.length; i++) {
+    if (!usedRegions.has(i)) {
+      availableRegions.push(i);
+    }
+  }
+  
+  // If all regions are used, assign based on hash (shouldn't happen with 20 regions and max 10 civilizations)
+  if (availableRegions.length === 0) {
+    return Math.abs(hash) % CIVILIZATION_REGIONS.length;
+  }
+  
+  // Randomly assign from available regions using hash as seed
+  return availableRegions[Math.abs(hash) % availableRegions.length];
+};
+
+/**
+ * Get the region index for a civilization based on its ID
+ * This is used to check which regions are already occupied
+ */
+const getCivilizationRegionIndex = (civilizationId: string): number => {
+  // For sample data, assign regions concentrated around equator like human civilizations
+  const sampleRegionMap: Record<string, number> = {
+    'sample-civ-1': 13, // Low latitude (5°N) - 持続可能なエネルギー開発
+    'sample-civ-2': 28, // Low latitude (5°S) - 海洋環境保護プロジェクト
+    'sample-civ-3': 14, // Low latitude (10°N) - 宇宙探査技術革新
+    'sample-civ-4': 24, // Low-mid latitude (15°S) - 古代文明の謎解き
+    'sample-civ-5': 9, // Low-mid latitude (15°N) - AI倫理ガイドライン策定
+  };
+  
+  if (sampleRegionMap[civilizationId] !== undefined) {
+    return sampleRegionMap[civilizationId];
+  }
+  
+  // For other civilizations, use hash-based assignment
+  const hash = civilizationId.split('').reduce((a, b) => {
+    // eslint-disable-next-line no-bitwise
+    a = ((a << 5) - a) + b.charCodeAt(0);
+    // eslint-disable-next-line no-bitwise
+    return a & a;
+  }, 0);
+  
+  return Math.abs(hash) % CIVILIZATION_REGIONS.length;
+};
+
+/**
+ * Generate stable spherical position for civilization
+ * Uses pre-defined regions to ensure even distribution
+ * Accounts for Earth's axis tilt (15 degrees)
+ */
+export const getCivilizationPosition = (civilization: Civilization, index: number, existingCivilizations: Civilization[] = []): THREE.Vector3 => {
+  // Assign a region to this civilization
+  const regionIndex = assignRegionToCivilization(civilization, existingCivilizations);
+  const region = CIVILIZATION_REGIONS[regionIndex];
+  
+  // Convert degrees to radians
+  const phi = (region.longitude * Math.PI) / 180; // Longitude
+  const theta = ((90 - region.latitude) * Math.PI) / 180; // Latitude (convert to spherical coordinates)
   
   // Convert to Cartesian coordinates on sphere surface
-  const x = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.cos(phi); // Slightly outside planet
-  const y = PLANET_RADIUS * 1.01 * Math.cos(theta);
-  const z = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.sin(phi);
+  let x = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.cos(phi);
+  let y = PLANET_RADIUS * 1.01 * Math.cos(theta);
+  let z = PLANET_RADIUS * 1.01 * Math.sin(theta) * Math.sin(phi);
   
-  return new THREE.Vector3(x, y, z);
+  // Apply Earth's axis tilt rotation around Z-axis
+  // This rotates the entire coordinate system to match the tilted planet
+  const cosTilt = Math.cos(EARTH_AXIS_TILT);
+  const sinTilt = Math.sin(EARTH_AXIS_TILT);
+  
+  // Rotate around Z-axis (Y-axis tilt)
+  const newX = x * cosTilt - y * sinTilt;
+  const newY = x * sinTilt + y * cosTilt;
+  const newZ = z;
+  
+  return new THREE.Vector3(newX, newY, newZ);
 };
 
 /**
@@ -356,7 +529,10 @@ export const createCivilizationMarker = (
   
   const marker = new THREE.Mesh(markerGeometry, markerMaterial);
   marker.position.copy(position);
-  marker.userData = { civilizationId: civilization.id }; // Store ID for raycasting
+  marker.userData = { 
+    civilizationId: civilization.id,
+    civilizationState: civilization.state // Store state for light intensity calculation
+  };
   
   return marker;
 };
@@ -382,7 +558,8 @@ export const updateCivilizationMarkers = (
       return; // Don't render ocean civilizations
     }
 
-    const position = getCivilizationPosition(civilization, index);
+    // Pass existing civilizations to ensure proper region assignment
+    const position = getCivilizationPosition(civilization, index, civilizations);
     const marker = createCivilizationMarker(civilization, position);
     
     if (spinGroup) {
@@ -414,6 +591,9 @@ export const updateMarkerState = (
       const newColor = getMarkerColor(newState);
       material.color.setHex(newColor);
       material.emissive.setHex(newColor);
+      
+      // Update userData with new state for light intensity calculation
+      marker.userData.civilizationState = newState;
     }
   }
 };

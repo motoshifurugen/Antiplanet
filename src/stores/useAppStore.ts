@@ -13,6 +13,11 @@ import {
   shouldPersistStateTransition,
 } from '../lib/civilizationStateMachine';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { 
+  createSampleCivilizations, 
+  createSamplePlanetGoal, 
+  shouldSeedSampleData 
+} from '../lib/sampleData';
 
 // Local storage keys
 const STORAGE_KEYS = {
@@ -69,6 +74,9 @@ interface AppState {
 
   // State derivation
   deriveCivStates: () => void;
+
+  // Sample data seeding
+  seedSampleData: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -119,13 +127,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       // Load civilizations from local storage
-      const civilizations = await loadFromStorage(STORAGE_KEYS.CIVILIZATIONS);
-      if (civilizations) {
-        set({ civilizations });
+      const loadedCivilizations = await loadFromStorage(STORAGE_KEYS.CIVILIZATIONS);
+      if (loadedCivilizations) {
+        set({ civilizations: loadedCivilizations });
       }
 
       // Derive states after loading
       get().deriveCivStates();
+
+      // Seed sample data if no civilizations exist
+      const { civilizations } = get();
+      if (shouldSeedSampleData(civilizations)) {
+        console.log('No civilizations found, seeding sample data...');
+        await get().seedSampleData();
+      }
     } catch (error) {
       console.error('Failed to load all data:', error);
     } finally {
@@ -376,5 +391,43 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
 
     set({ civilizations: updatedCivilizations });
+  },
+
+  // Seed sample data for testing
+  seedSampleData: async () => {
+    const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot seed sample data: no UID');
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      // Create sample civilizations
+      const sampleCivilizations = createSampleCivilizations();
+      
+      // Save civilizations to local storage
+      await saveToStorage(STORAGE_KEYS.CIVILIZATIONS, sampleCivilizations);
+      set({ civilizations: sampleCivilizations });
+
+      // Create sample planet goal if none exists
+      const { planetGoal } = get();
+      if (!planetGoal) {
+        const samplePlanetGoal = createSamplePlanetGoal();
+        await saveToStorage(STORAGE_KEYS.PLANET_GOAL, samplePlanetGoal);
+        set({ planetGoal: samplePlanetGoal });
+      }
+
+      // Derive states for sample data
+      get().deriveCivStates();
+      
+      console.log('Sample data seeded successfully:', {
+        civilizations: sampleCivilizations.length,
+        planetGoal: !!planetGoal,
+      });
+    } catch (error) {
+      console.error('Failed to seed sample data:', error);
+      throw error;
+    }
   },
 }));
