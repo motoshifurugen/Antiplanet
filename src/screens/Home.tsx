@@ -25,6 +25,7 @@ import {
   renderScene,
   resizeScene,
   disposeScene,
+  startIdleAnimation,
 } from '../lib/three';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -125,6 +126,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     try {
       const newScene = createPlanetScene(gl);
       setScene(newScene);
+      
+      // Start idle animation after a delay
+      setTimeout(() => {
+        startIdleAnimation(newScene);
+      }, 1000);
       
       // Initial render
       renderScene(newScene);

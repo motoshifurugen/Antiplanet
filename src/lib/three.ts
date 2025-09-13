@@ -31,6 +31,41 @@ const CAMERA_MAX_DISTANCE = 4.0; // Adjusted for much smaller planet
 const CAMERA_INITIAL_DISTANCE = 2.2; // Adjusted for much smaller planet
 const EARTH_AXIS_TILT = 23.4 * Math.PI / 180; // 23.4 degrees in radians
 
+// Global references for scene graph
+let tiltGroup: THREE.Group | null = null;
+let spinGroup: THREE.Group | null = null;
+
+// Simple animation state
+let animationInterval: NodeJS.Timeout | null = null;
+let isAnimating = false;
+
+/**
+ * Start simple idle rotation
+ */
+export const startIdleAnimation = (scene: PlanetScene): void => {
+  if (isAnimating) return;
+  
+  isAnimating = true;
+  animationInterval = setInterval(() => {
+    if (spinGroup) {
+      spinGroup.rotation.y += 0.01; // Slow rotation
+      scene.renderer.render(scene.scene, scene.camera);
+      (scene.renderer.getContext() as any).endFrameEXP();
+    }
+  }, 50); // 20fps for smooth rotation
+};
+
+/**
+ * Stop idle animation
+ */
+export const stopIdleAnimation = (): void => {
+  isAnimating = false;
+  if (animationInterval) {
+    clearInterval(animationInterval);
+    animationInterval = null;
+  }
+};
+
 /**
  * Create smooth planet mesh with PBR material
  */
@@ -123,11 +158,15 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   // Setup lighting
   setupLights(scene);
 
+  // Create scene graph groups
+  tiltGroup = new THREE.Group();
+  spinGroup = new THREE.Group();
+  
+  // Apply Earth's axis tilt to tilt group (23.4 degrees)
+  tiltGroup.rotation.x = EARTH_AXIS_TILT;
+  
   // Create smooth planet mesh
   const planet = createPlanetMesh();
-  
-  // Apply Earth's axis tilt (23.4 degrees)
-  planet.rotation.x = EARTH_AXIS_TILT;
   
   // Add very subtle white outline to planet
   const outlineGeometry = new THREE.SphereGeometry(PLANET_RADIUS * 1.005, 32, 24);
@@ -140,7 +179,26 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   const outline = new THREE.Mesh(outlineGeometry, outlineMaterial);
   planet.add(outline);
   
-  scene.add(planet);
+  // Add equator ring for visual rotation cue
+  const ringGeometry = new THREE.RingGeometry(PLANET_RADIUS * 0.995, PLANET_RADIUS * 1.005, 32);
+  const ringMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.3,
+    side: THREE.DoubleSide,
+  });
+  const equatorRing = new THREE.Mesh(ringGeometry, ringMaterial);
+  equatorRing.rotation.x = Math.PI / 2; // Rotate to be horizontal
+  
+  // Add planet and equator ring to spin group
+  spinGroup.add(planet);
+  spinGroup.add(equatorRing);
+  
+  // Add spin group to tilt group
+  tiltGroup.add(spinGroup);
+  
+  // Add tilt group to scene
+  scene.add(tiltGroup);
 
   // Interaction setup
   const raycaster = new THREE.Raycaster();
@@ -244,7 +302,9 @@ export const updateCivilizationMarkers = (
 ): void => {
   // Remove existing markers
   scene.markers.forEach(marker => {
-    scene.scene.remove(marker);
+    if (spinGroup) {
+      spinGroup.remove(marker);
+    }
   });
   scene.markers.clear();
 
@@ -257,7 +317,9 @@ export const updateCivilizationMarkers = (
     const position = getCivilizationPosition(civilization, index);
     const marker = createCivilizationMarker(civilization, position);
     
-    scene.scene.add(marker);
+    if (spinGroup) {
+      spinGroup.add(marker);
+    }
     scene.markers.set(civilization.id, marker);
   });
 };
@@ -274,7 +336,9 @@ export const updateMarkerState = (
   if (marker) {
     if (newState === 'ocean') {
       // Remove marker for ocean state
-      scene.scene.remove(marker);
+      if (spinGroup) {
+        spinGroup.remove(marker);
+      }
       scene.markers.delete(civilizationId);
     } else {
       // Update marker color and emissive
@@ -341,17 +405,13 @@ export const rotatePlanet = (
 ): void => {
   // Only rotate around Y-axis (horizontal rotation)
   // Ignore deltaY to prevent vertical movement
-  // Reverse deltaX to match swipe direction with rotation direction
-  const rotationAmount = -deltaX * sensitivity;
+  // Match swipe direction with rotation direction (no reverse)
+  const rotationAmount = deltaX * sensitivity;
   
-  // Create rotation matrix around Y-axis
-  const rotationMatrix = new THREE.Matrix4().makeRotationY(rotationAmount);
-  
-  // Apply rotation to camera position
-  scene.camera.position.applyMatrix4(rotationMatrix);
-  
-  // Keep camera looking at the center
-  scene.camera.lookAt(0, 0, 0);
+  // Apply rotation to spin group
+  if (spinGroup) {
+    spinGroup.rotation.y += rotationAmount;
+  }
 };
 
 /**
@@ -381,6 +441,13 @@ export const renderScene = (scene: PlanetScene): void => {
  * Dispose scene resources
  */
 export const disposeScene = (scene: PlanetScene): void => {
+  // Stop animation
+  stopIdleAnimation();
+  
+  // Clear global references
+  tiltGroup = null;
+  spinGroup = null;
+  
   // Dispose geometries and materials
   scene.scene.traverse((object) => {
     if (object instanceof THREE.Mesh) {
