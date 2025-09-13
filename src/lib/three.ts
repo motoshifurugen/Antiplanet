@@ -29,6 +29,7 @@ const PLANET_RADIUS = 1;
 const CAMERA_MIN_DISTANCE = 2;
 const CAMERA_MAX_DISTANCE = 6;
 const CAMERA_INITIAL_DISTANCE = 3.5;
+const EARTH_AXIS_TILT = 23.4 * Math.PI / 180; // 23.4 degrees in radians
 
 /**
  * Create smooth planet mesh with PBR material
@@ -52,20 +53,24 @@ export const createPlanetMesh = (): THREE.Mesh => {
 
 /**
  * Setup 3-light configuration for realistic planet lighting
+ * Mimics Earth-Sun relationship with proper lighting direction
  */
 export const setupLights = (scene: THREE.Scene): void => {
   // Ambient light - dark bluish tint for space atmosphere
-  const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.3);
+  const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.2);
   scene.add(ambientLight);
   
-  // Directional light - warm sunlight from top-right
-  const directionalLight = new THREE.DirectionalLight(0xffd89b, 1.2);
-  directionalLight.position.set(2, 3, 1);
+  // Directional light - warm sunlight from the "sun" direction
+  // Positioned to simulate sun coming from a specific direction
+  // This creates realistic day/night terminator line
+  const directionalLight = new THREE.DirectionalLight(0xffd89b, 1.5);
+  directionalLight.position.set(5, 2, 3); // Sun-like position
   directionalLight.castShadow = false; // No shadows for performance
   scene.add(directionalLight);
   
   // Hemisphere light - subtle sky/ground color mixing
-  const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x2c3e50, 0.4);
+  // Sky blue from above, darker blue from below
+  const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x2c3e50, 0.3);
   scene.add(hemisphereLight);
 };
 
@@ -99,6 +104,10 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
 
   // Create smooth planet mesh
   const planet = createPlanetMesh();
+  
+  // Apply Earth's axis tilt (23.4 degrees)
+  planet.rotation.x = EARTH_AXIS_TILT;
+  
   scene.add(planet);
 
   // Interaction setup
@@ -284,7 +293,7 @@ export const detectMarkerHit = (
 };
 
 /**
- * Apply camera rotation
+ * Apply camera rotation around tilted planet axis (Y-axis only)
  */
 export const rotatePlanet = (
   scene: PlanetScene,
@@ -292,16 +301,18 @@ export const rotatePlanet = (
   deltaY: number,
   sensitivity: number = 0.005
 ): void => {
-  // Get current spherical coordinates
-  const spherical = new THREE.Spherical();
-  spherical.setFromVector3(scene.camera.position);
+  // Only rotate around Y-axis (horizontal rotation)
+  // Ignore deltaY to prevent vertical movement
+  // Reverse deltaX to match swipe direction with rotation direction
+  const rotationAmount = -deltaX * sensitivity;
   
-  // Apply rotation
-  spherical.theta -= deltaX * sensitivity;
-  spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi + deltaY * sensitivity));
+  // Create rotation matrix around Y-axis
+  const rotationMatrix = new THREE.Matrix4().makeRotationY(rotationAmount);
   
-  // Update camera position
-  scene.camera.position.setFromSpherical(spherical);
+  // Apply rotation to camera position
+  scene.camera.position.applyMatrix4(rotationMatrix);
+  
+  // Keep camera looking at the center
   scene.camera.lookAt(0, 0, 0);
 };
 

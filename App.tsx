@@ -1,9 +1,8 @@
-// Temporarily disabled to fix NativeWorklets error
-// import 'react-native-reanimated';
+import 'react-native-reanimated';
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator } from 'react-native';
-// import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   useFonts,
   NotoSansJP_300Light,
@@ -56,9 +55,9 @@ export default function App() {
   return (
     <>
       <StatusBar style="light" />
-      <View style={{ flex: 1 }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <RootNavigator />
-      </View>
+      </GestureHandlerRootView>
     </>
   );
 }
