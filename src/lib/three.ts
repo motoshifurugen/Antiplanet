@@ -4,7 +4,7 @@
 import { ExpoWebGLRenderingContext } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import * as THREE from 'three';
-import { Civilization, CivState } from '../types';
+import { Civilization, CivState, CivLevel } from '../types';
 import { colors } from '../theme/colors';
 
 export interface PlanetScene {
@@ -59,7 +59,7 @@ export const startIdleAnimation = (scene: PlanetScene): void => {
   animationInterval = setInterval(() => {
     if (spinGroup && !isGestureActive) {
       // Update day/night angle (planet rotation) only when not gesturing
-      dayNightAngle += 0.01; // Slow rotation
+      dayNightAngle -= 0.01; // Slow rotation (reversed direction)
       spinGroup.rotation.y = dayNightAngle;
       
       // Update marker day/night states based on rotation
@@ -102,7 +102,27 @@ export const endGesture = (scene: PlanetScene): void => {
 };
 
 /**
- * Get light intensity based on civilization state (rank)
+ * Get light intensity based on civilization level
+ * Higher level civilizations have stronger lights
+ * Balanced to not overwhelm the planet's atmosphere
+ */
+const getLightIntensityByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return 0.15; // Very dim light for natural areas
+    case 'village':
+      return 0.25; // Dim light for rural areas
+    case 'town':
+      return 0.40; // Moderate light for towns
+    case 'city':
+      return 0.60; // Bright light for cities
+    default:
+      return 0.15;
+  }
+};
+
+/**
+ * Get light intensity based on civilization state (legacy support)
  * Higher rank civilizations have stronger lights
  * Balanced to not overwhelm the planet's atmosphere
  */
@@ -122,7 +142,26 @@ const getLightIntensityByState = (state: CivState): number => {
 };
 
 /**
- * Get night light color based on civilization state
+ * Get night light color based on civilization level
+ * Creates warm, atmospheric lighting for night side
+ */
+const getNightLightColorByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return 0x444466; // Dim blue-white for natural areas
+    case 'village':
+      return 0x666644; // Warm amber light for rural areas
+    case 'town':
+      return 0x888844; // Bright golden light for towns
+    case 'city':
+      return 0xAAAA22; // Very bright golden light for cities
+    default:
+      return 0x444466;
+  }
+};
+
+/**
+ * Get night light color based on civilization state (legacy support)
  * Creates warm, atmospheric lighting for night side
  */
 const getNightLightColorByState = (state: CivState): number => {
@@ -142,39 +181,17 @@ const getNightLightColorByState = (state: CivState): number => {
 
 /**
  * Update marker day/night states based on planet rotation
+ * Note: Color changes removed - lighting will be handled by building lights separately
  */
 const updateMarkerDayNightStates = (scene: PlanetScene): void => {
   scene.markers.forEach((marker, civilizationId) => {
-    // Get marker position in world coordinates
-    const worldPosition = new THREE.Vector3();
-    marker.getWorldPosition(worldPosition);
-    
-    // Calculate if marker is in day or night based on its position
-    // Sun light comes from (25, 0, 8) direction
-    // Calculate dot product with sun direction for accurate day/night
-    const sunDirection = new THREE.Vector3(25, 0, 8).normalize();
-    const markerDirection = worldPosition.normalize();
-    const dotProduct = markerDirection.dot(sunDirection);
-    // Adjust threshold to match lighting - lights turn off later
-    const isDay = dotProduct > 0.1; // Threshold adjusted to delay light turn-off
-    
-    // Update marker appearance based on day/night
-    // Night = lights on (bright), Day = lights off (dim)
+    // Keep consistent appearance regardless of day/night
+    // Color changes removed - lighting will be handled by building lights separately
     const material = marker.material as THREE.MeshStandardMaterial;
-    if (isDay) {
-      // Day: lights off, dim colors
-      material.emissive.setHex(0x111133);
-      material.emissiveIntensity = 0.1;
-    } else {
-      // Night: lights on, intensity and color based on civilization state
-      // Get civilization state from marker userData
-      const civilizationState = marker.userData.civilizationState as CivState;
-      const lightIntensity = getLightIntensityByState(civilizationState);
-      const nightLightColor = getNightLightColorByState(civilizationState);
-      
-      material.emissive.setHex(nightLightColor);
-      material.emissiveIntensity = lightIntensity;
-    }
+    
+    // Maintain consistent emissive properties
+    material.emissiveIntensity = 0.2; // Consistent base emissive intensity
+    // Keep original color - no day/night color changes
   });
 };
 
@@ -494,7 +511,43 @@ const hexToThreeColor = (hexString: string): number => {
 };
 
 /**
- * Get marker color based on civilization state (consistent with UI theme)
+ * Get marker color based on civilization level (consistent with UI theme)
+ */
+export const getMarkerColorByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return hexToThreeColor(colors.grassland);
+    case 'village':
+      return hexToThreeColor(colors.village);
+    case 'town':
+      return hexToThreeColor(colors.town);
+    case 'city':
+      return hexToThreeColor(colors.city);
+    default:
+      return hexToThreeColor(colors.grassland);
+  }
+};
+
+/**
+ * Get marker size based on civilization level (growth level affects land size)
+ */
+export const getMarkerSizeByLevel = (level: CivLevel): number => {
+  switch (level) {
+    case 'grassland':
+      return 1.2; // Smallest - natural, undeveloped (increased from 0.8)
+    case 'village':
+      return 1.5; // Small - simple rural development (increased from 1.0)
+    case 'town':
+      return 1.9; // Medium - moderate development (increased from 1.3)
+    case 'city':
+      return 2.4; // Largest - advanced urban development (increased from 1.6)
+    default:
+      return 1.2;
+  }
+};
+
+/**
+ * Get marker color based on civilization state (legacy support)
  */
 export const getMarkerColor = (state: CivState): number => {
   switch (state) {
@@ -518,20 +571,89 @@ export const createCivilizationMarker = (
   civilization: Civilization,
   position: THREE.Vector3
 ): THREE.Mesh => {
-  const markerGeometry = new THREE.SphereGeometry(0.03, 16, 12); // Small smooth sphere
+  // Use new level system if available, fallback to legacy state system
+  const markerColor = civilization.levels 
+    ? getMarkerColorByLevel(civilization.levels.classification)
+    : getMarkerColor(civilization.state);
+  
+  const markerSize = civilization.levels 
+    ? getMarkerSizeByLevel(civilization.levels.classification)
+    : 1.0; // Default size for legacy state system
+  
+  // Debug logging
+  console.log(`Creating marker for ${civilization.name}:`, {
+    level: civilization.levels?.classification,
+    color: markerColor.toString(16),
+    size: markerSize
+  });
+  
+  // Create sphere geometry for civilization markers
+  const baseRadius = 0.04 * markerSize; // Increased base size from 0.03
+  const markerGeometry = new THREE.SphereGeometry(baseRadius, 16, 12);
   const markerMaterial = new THREE.MeshStandardMaterial({
-    color: getMarkerColor(civilization.state),
+    color: markerColor,
     metalness: 0.1,
     roughness: 0.3,
-    emissive: getMarkerColor(civilization.state),
+    emissive: markerColor,
     emissiveIntensity: 0.2,
   });
   
   const marker = new THREE.Mesh(markerGeometry, markerMaterial);
   marker.position.copy(position);
+  
+  // Apply gravity-like flattening towards planet center
+  // Calculate the normal direction from planet center to marker position
+  const planetCenter = new THREE.Vector3(0, 0, 0);
+  const normalDirection = position.clone().normalize();
+  
+  // Create a transformation matrix that flattens the marker towards the planet center
+  // This simulates gravity pulling the marker down towards the surface
+  const flattenFactor = 0.5; // How much to flatten (0.5 = 50% of original height - more flattened)
+  
+  // Create a custom transformation that compresses along the normal direction
+  const scaleMatrix = new THREE.Matrix4();
+  const identityMatrix = new THREE.Matrix4().identity();
+  
+  // Calculate the scaling factors for each axis
+  // We want to compress along the normal direction (towards planet center)
+  const normalX = normalDirection.x;
+  const normalY = normalDirection.y;
+  const normalZ = normalDirection.z;
+  
+  // Create a transformation that flattens along the normal direction
+  // This is more complex than simple axis scaling - we need to transform along the surface normal
+  const flattenScale = flattenFactor;
+  const preserveScale = 1.0;
+  
+  // Apply the flattening transformation
+  // Scale down along the normal direction, preserve other directions
+  const transformMatrix = new THREE.Matrix4();
+  
+  // Calculate the scaling matrix components
+  const xx = preserveScale + (flattenScale - preserveScale) * normalX * normalX;
+  const xy = (flattenScale - preserveScale) * normalX * normalY;
+  const xz = (flattenScale - preserveScale) * normalX * normalZ;
+  const yx = (flattenScale - preserveScale) * normalY * normalX;
+  const yy = preserveScale + (flattenScale - preserveScale) * normalY * normalY;
+  const yz = (flattenScale - preserveScale) * normalY * normalZ;
+  const zx = (flattenScale - preserveScale) * normalZ * normalX;
+  const zy = (flattenScale - preserveScale) * normalZ * normalY;
+  const zz = preserveScale + (flattenScale - preserveScale) * normalZ * normalZ;
+  
+  transformMatrix.set(
+    xx, xy, xz, 0,
+    yx, yy, yz, 0,
+    zx, zy, zz, 0,
+    0,  0,  0,  1
+  );
+  
+  // Apply the transformation to the geometry
+  markerGeometry.applyMatrix4(transformMatrix);
+  
   marker.userData = { 
     civilizationId: civilization.id,
-    civilizationState: civilization.state // Store state for light intensity calculation
+    civilizationState: civilization.state, // Store state for light intensity calculation
+    civilizationLevel: civilization.levels?.classification // Store level for new system
   };
   
   return marker;
@@ -570,30 +692,42 @@ export const updateCivilizationMarkers = (
 };
 
 /**
- * Update single marker color when state changes
+ * Update single marker when civilization changes
  */
 export const updateMarkerState = (
   scene: PlanetScene,
   civilizationId: string,
-  newState: CivState
+  civilization: Civilization
 ): void => {
   const marker = scene.markers.get(civilizationId);
   if (marker) {
-    if (newState === 'ocean') {
+    if (civilization.state === 'ocean') {
       // Remove marker for ocean state
       if (spinGroup) {
         spinGroup.remove(marker);
       }
       scene.markers.delete(civilizationId);
     } else {
-      // Update marker color and emissive
+      // Update marker color, size, and emissive based on new level system
       const material = marker.material as THREE.MeshStandardMaterial;
-      const newColor = getMarkerColor(newState);
+      
+      // Use new level system if available, fallback to legacy state system
+      const newColor = civilization.levels 
+        ? getMarkerColorByLevel(civilization.levels.classification)
+        : getMarkerColor(civilization.state);
+      
       material.color.setHex(newColor);
       material.emissive.setHex(newColor);
       
-      // Update userData with new state for light intensity calculation
-      marker.userData.civilizationState = newState;
+      // Update marker size if level system is available
+      if (civilization.levels) {
+        const newSize = getMarkerSizeByLevel(civilization.levels.classification);
+        marker.scale.setScalar(newSize);
+      }
+      
+      // Update userData with new state and level for light intensity calculation
+      marker.userData.civilizationState = civilization.state;
+      marker.userData.civilizationLevel = civilization.levels?.classification;
     }
   }
 };
@@ -654,15 +788,15 @@ export const rotatePlanet = (
 ): void => {
   // Apply rotation to spin group for intuitive XYZ rotation
   if (spinGroup) {
-    // Horizontal swipe (deltaX) rotates around Y-axis
-    const yRotation = deltaX * sensitivity;
+    // Horizontal swipe (deltaX) rotates around Y-axis (reversed direction)
+    const yRotation = -deltaX * sensitivity; // Reversed direction
     spinGroup.rotation.y += yRotation;
     
     // Update day/night angle to match current rotation
     dayNightAngle = spinGroup.rotation.y;
     
-    // Vertical swipe (deltaY) rotates around X-axis
-    spinGroup.rotation.x += deltaY * sensitivity;
+    // Vertical swipe (deltaY) rotates around X-axis (reversed direction)
+    spinGroup.rotation.x -= deltaY * sensitivity; // Reversed direction
   }
 };
 

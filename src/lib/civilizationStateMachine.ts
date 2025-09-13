@@ -1,6 +1,7 @@
 // Civilization State Machine - deterministic state evaluation based on staleness
+// Updated to support new level-based system
 
-import { CivState } from '../types';
+import { CivState, CivLevel, CivilizationLevels } from '../types';
 
 // State transition thresholds (in days)
 const THRESHOLDS = {
@@ -86,6 +87,58 @@ export const evaluateCivilizationState = (
   return {
     derivedState,
     shouldPersist,
+  };
+};
+
+/**
+ * Calculate civilization levels based on progress frequency and staleness
+ * Cultural level: Based on recent progress frequency (last 30 days)
+ * Growth level: Based on overall progress consistency (last 90 days)
+ * Total level: Average of cultural and growth levels
+ * Classification: Derived from total level ranges
+ */
+export const calculateCivilizationLevels = (
+  now: number,
+  progressLogs: number[] // Array of progress timestamps
+): CivilizationLevels => {
+  const DAYS_TO_MS = 24 * 60 * 60 * 1000;
+  const CULTURAL_PERIOD = 30; // 30 days for cultural level
+  const GROWTH_PERIOD = 90;   // 90 days for growth level
+  
+  // Filter progress logs within the periods
+  const culturalLogs = progressLogs.filter(
+    timestamp => (now - timestamp) <= (CULTURAL_PERIOD * DAYS_TO_MS)
+  );
+  const growthLogs = progressLogs.filter(
+    timestamp => (now - timestamp) <= (GROWTH_PERIOD * DAYS_TO_MS)
+  );
+  
+  // Calculate cultural level (0-100) based on recent activity
+  const culturalLevel = Math.min(100, (culturalLogs.length / 10) * 100);
+  
+  // Calculate growth level (0-100) based on overall consistency
+  const growthLevel = Math.min(100, (growthLogs.length / 20) * 100);
+  
+  // Calculate total level
+  const totalLevel = (culturalLevel + growthLevel) / 2;
+  
+  // Determine classification based on total level
+  let classification: CivLevel;
+  if (totalLevel >= 75) {
+    classification = 'city';
+  } else if (totalLevel >= 50) {
+    classification = 'town';
+  } else if (totalLevel >= 25) {
+    classification = 'village';
+  } else {
+    classification = 'grassland';
+  }
+  
+  return {
+    culturalLevel: Math.round(culturalLevel),
+    growthLevel: Math.round(growthLevel),
+    totalLevel: Math.round(totalLevel),
+    classification,
   };
 };
 

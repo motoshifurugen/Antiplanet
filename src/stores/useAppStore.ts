@@ -11,6 +11,7 @@ import {
 import {
   deriveCivilizationState,
   shouldPersistStateTransition,
+  calculateCivilizationLevels,
 } from '../lib/civilizationStateMachine';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -73,7 +74,7 @@ interface AppState {
   logProgress: (id: string) => Promise<void>;
 
   // State derivation
-  deriveCivStates: () => void;
+  deriveCivStates: () => Promise<void>;
 
   // Sample data seeding
   seedSampleData: () => Promise<void>;
@@ -133,7 +134,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       // Derive states after loading
-      get().deriveCivStates();
+      await get().deriveCivStates();
 
       // Seed sample data if no civilizations exist
       const { civilizations } = get();
@@ -221,6 +222,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       const civilization: Civilization = {
         ...data,
         id: civId,
+        levels: {
+          culturalLevel: 0,
+          growthLevel: 0,
+          totalLevel: 0,
+          classification: 'grassland',
+        },
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -231,7 +238,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       await saveToStorage(STORAGE_KEYS.CIVILIZATIONS, updatedCivilizations);
       set({ civilizations: updatedCivilizations });
 
-      get().deriveCivStates();
+      await get().deriveCivStates();
       console.log('Civilization created and saved to local storage');
       return civId;
     } catch (error) {
@@ -300,7 +307,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       // Reload all civilizations from storage
       await get().loadCivilizations();
-      get().deriveCivStates();
+      await get().deriveCivStates();
     } catch (error) {
       console.error('Failed to refresh civilization:', error);
       throw error;
@@ -346,8 +353,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // Derive current states for all civilizations - Local storage based
-  deriveCivStates: () => {
+  // Derive current states and levels for all civilizations - Local storage based
+  deriveCivStates: async () => {
     const { civilizations, uid } = get();
     
     if (!uid) {
@@ -357,9 +364,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     const now = Date.now();
 
+    // Load progress logs for level calculation
+    const progressLogs = await loadFromStorage(STORAGE_KEYS.PROGRESS_LOGS) || [];
+    console.log('Progress logs loaded:', progressLogs.length);
+
     const updatedCivilizations = civilizations.map(civ => {
       // Derive current state based on staleness
       const derivedState = deriveCivilizationState(now, civ.lastProgressAt);
+
+      // Calculate levels based on progress logs
+      const civProgressLogs = progressLogs
+        .filter((log: any) => log.civId === civ.id)
+        .map((log: any) => log.createdAt);
+      
+      console.log(`Civilization ${civ.name} progress logs:`, civProgressLogs.length);
+      
+      // Use existing levels if available (for sample data), otherwise calculate from progress logs
+      const levels = civ.levels || calculateCivilizationLevels(now, civProgressLogs);
+      console.log(`Civilization ${civ.name} final levels:`, levels);
 
       // Check if we need to persist state transition
       const needsPersist = shouldPersistStateTransition(derivedState, civ.state);
@@ -383,10 +405,11 @@ export const useAppStore = create<AppState>((set, get) => ({
           });
       }
 
-      // Return civilization with derived state (for display)
+      // Return civilization with derived state and calculated levels
       return {
         ...civ,
         state: derivedState, // Use derived state for display
+        levels,
       };
     });
 
@@ -419,7 +442,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       // Derive states for sample data
-      get().deriveCivStates();
+      await get().deriveCivStates();
       
       console.log('Sample data seeded successfully:', {
         civilizations: sampleCivilizations.length,

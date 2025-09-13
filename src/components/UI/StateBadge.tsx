@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { CivState } from '../../types';
+import { CivState, CivLevel } from '../../types';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -11,10 +11,11 @@ import { animations, createAnimation } from '../../theme/animations';
 import { Icon } from './Icon';
 
 interface StateBadgeProps {
-  state: CivState;
+  state?: CivState; // legacy support
+  level?: CivLevel; // new level system
 }
 
-export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
+export const StateBadge: React.FC<StateBadgeProps> = ({ state, level }) => {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -25,6 +26,36 @@ export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
       createAnimation('fadeIn', opacityAnim),
     ]).start();
   }, [state, scaleAnim, opacityAnim]);
+
+  const getLevelStyle = (civLevel: CivLevel) => {
+    switch (civLevel) {
+      case 'grassland':
+        return {
+          backgroundColor: colors.grassland,
+          color: '#FFFFFF',
+        };
+      case 'village':
+        return {
+          backgroundColor: colors.village,
+          color: '#FFFFFF',
+        };
+      case 'town':
+        return {
+          backgroundColor: colors.town,
+          color: '#FFFFFF',
+        };
+      case 'city':
+        return {
+          backgroundColor: colors.city,
+          color: '#FFFFFF',
+        };
+      default:
+        return {
+          backgroundColor: colors.grassland,
+          color: '#FFFFFF',
+        };
+    }
+  };
 
   const getStateStyle = (civState: CivState) => {
     switch (civState) {
@@ -56,6 +87,21 @@ export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
     }
   };
 
+  const getLevelIcon = (civLevel: CivLevel) => {
+    switch (civLevel) {
+      case 'grassland':
+        return 'grassland';
+      case 'village':
+        return 'village';
+      case 'town':
+        return 'town';
+      case 'city':
+        return 'city';
+      default:
+        return 'grassland';
+    }
+  };
+
   const getStateIcon = (civState: CivState) => {
     switch (civState) {
       case 'uninitialized':
@@ -71,6 +117,21 @@ export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
     }
   };
 
+  const getLevelText = (civLevel: CivLevel) => {
+    switch (civLevel) {
+      case 'grassland':
+        return '草原';
+      case 'village':
+        return '村';
+      case 'town':
+        return '町';
+      case 'city':
+        return '都市';
+      default:
+        return '草原';
+    }
+  };
+
   const getStateText = (civState: CivState) => {
     switch (civState) {
       case 'uninitialized':
@@ -82,32 +143,34 @@ export const StateBadge: React.FC<StateBadgeProps> = ({ state }) => {
       case 'ocean':
         return '海洋化';
       default:
-        return civState.charAt(0).toUpperCase() + civState.slice(1);
+        return String(civState).charAt(0).toUpperCase() + String(civState).slice(1);
     }
   };
 
-  const stateStyle = getStateStyle(state);
-  const stateIcon = getStateIcon(state);
+  // Use new level system if available, fallback to legacy state system
+  const badgeStyle = level ? getLevelStyle(level) : getStateStyle(state!);
+  const badgeIcon = level ? getLevelIcon(level) : getStateIcon(state!);
+  const badgeText = level ? getLevelText(level) : getStateText(state!);
 
   return (
     <Animated.View 
       style={[
         styles.badge, 
         { 
-          backgroundColor: stateStyle.backgroundColor,
+          backgroundColor: badgeStyle.backgroundColor,
           transform: [{ scale: scaleAnim }],
           opacity: opacityAnim,
         }
       ]}
     >
       <Icon 
-        name={stateIcon} 
+        name={badgeIcon} 
         size="xs" 
-        color={stateStyle.color}
+        color={badgeStyle.color}
         style={styles.badgeIcon}
       />
-      <Text style={[styles.badgeText, { color: stateStyle.color }]}>
-        {getStateText(state)}
+      <Text style={[styles.badgeText, { color: badgeStyle.color }]}>
+        {badgeText}
       </Text>
     </Animated.View>
   );

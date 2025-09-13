@@ -126,12 +126,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: colors.modalBackground,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     minHeight: 200,
     maxHeight: '50%',
     ...ui.modal,
+    backgroundColor: colors.modalBackground,
   },
   content: {
     padding: spacing.lg,

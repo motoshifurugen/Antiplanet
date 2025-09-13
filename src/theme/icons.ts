@@ -23,6 +23,9 @@ import {
   Calendar,
   BookOpen,
   Lightbulb,
+  TreePine,
+  Building,
+  Building2,
   type LucideIcon,
 } from 'lucide-react-native';
 import { colors } from './colors';
@@ -55,11 +58,17 @@ export const icons = {
   save: CheckCircle,
   confirm: CheckCircle,
   
-  // Civilization states
+  // Civilization states (legacy)
   uninitialized: Circle,
   developing: TrendingUp,
   decaying: TrendingDown,
   ocean: Globe,
+  
+  // Civilization levels (new system)
+  grassland: TreePine,
+  village: Home,
+  town: Building,
+  city: Building2,
   
   // Status and feedback
   success: CheckCircle,

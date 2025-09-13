@@ -12,6 +12,12 @@ export const colors = {
   error: '#C75B5B',          // Calm red - collapse/failure
   accent: '#D9B86C',         // Gold - achievements, highlights
   
+  // Civilization level colors - progression from nature to urban
+  grassland: '#8FBC8F',      // Forest green - natural, undeveloped
+  village: '#D2B48C',        // Tan - simple, rural development
+  town: '#CD853F',           // Peru - moderate development
+  city: '#B8860B',           // Dark goldenrod - advanced urban development
+  
   // Dark cosmic background - optimized for all lighting conditions
   background: '#0A0A0F',     // Deep cosmic black (slightly lighter for day viewing)
   surface: '#1A1B22',        // Dark surface with subtle contrast

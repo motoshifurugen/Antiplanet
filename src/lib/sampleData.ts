@@ -1,11 +1,11 @@
 // Sample data for testing in Expo Go
-// Creates 5 civilizations with different ranks (states)
+// Creates 4 civilizations covering all level classifications (grassland, village, town, city)
 
-import { Civilization, CivState } from '../types';
+import { Civilization, CivState, CivilizationLevels } from '../types';
 
 /**
- * Generate sample civilizations with different states
- * Each state represents a different rank/development level
+ * Generate sample civilizations covering all 4 level classifications
+ * Each civilization represents a different development stage
  */
 export const createSampleCivilizations = (): Civilization[] => {
   const now = Date.now();
@@ -14,77 +14,74 @@ export const createSampleCivilizations = (): Civilization[] => {
   const twoWeeksMs = 14 * oneDayMs;
   const threeWeeksMs = 21 * oneDayMs;
 
+  // Helper function to create sample levels
+  const createSampleLevels = (culturalLevel: number, growthLevel: number): CivilizationLevels => {
+    const totalLevel = (culturalLevel + growthLevel) / 2;
+    let classification: 'grassland' | 'village' | 'town' | 'city';
+    if (totalLevel >= 75) classification = 'city';
+    else if (totalLevel >= 50) classification = 'town';
+    else if (totalLevel >= 25) classification = 'village';
+    else classification = 'grassland';
+    
+    return {
+      culturalLevel,
+      growthLevel,
+      totalLevel: Math.round(totalLevel),
+      classification,
+    };
+  };
+
   return [
-    // 1. Developing civilization (highest rank) - recently active
+    // 1. 草原レベル - 未初期化文明（進捗なし）
     {
       id: 'sample-civ-1',
-      name: '持続可能なエネルギー開発',
-      purpose: '太陽光発電システムの研究開発を毎日進める',
-      deadline: '2024-12-31',
-      state: 'developing' as CivState,
-      lastProgressAt: now - (2 * oneDayMs), // 2 days ago
-      createdAt: now - (30 * oneDayMs), // 30 days ago
-      updatedAt: now - (2 * oneDayMs),
-    },
-
-    // 2. Decaying civilization (medium rank) - moderately stale
-    {
-      id: 'sample-civ-2',
-      name: '海洋環境保護プロジェクト',
-      purpose: '海洋プラスチック問題の解決策を研究する',
-      deadline: '2024-11-15',
-      state: 'decaying' as CivState,
-      lastProgressAt: now - (10 * oneDayMs), // 10 days ago
-      createdAt: now - (45 * oneDayMs), // 45 days ago
-      updatedAt: now - (10 * oneDayMs),
-    },
-
-    // 3. Uninitialized civilization (lowest rank) - never had progress
-    {
-      id: 'sample-civ-3',
       name: '宇宙探査技術革新',
       purpose: '火星探査機の設計と開発',
       deadline: '2025-03-20',
       state: 'uninitialized' as CivState,
+      levels: createSampleLevels(0, 0), // No progress - grassland
       lastProgressAt: undefined, // Never had progress
       createdAt: now - (5 * oneDayMs), // 5 days ago
       updatedAt: now - (5 * oneDayMs),
     },
 
-    // 4. Ocean civilization (inactive) - very stale
+    // 2. 村レベル - 初期段階の文明
     {
-      id: 'sample-civ-4',
-      name: '古代文明の謎解き',
-      purpose: '失われた古代技術の復元研究',
-      deadline: '2024-10-30',
-      state: 'ocean' as CivState,
-      lastProgressAt: now - (25 * oneDayMs), // 25 days ago
-      createdAt: now - (60 * oneDayMs), // 60 days ago
-      updatedAt: now - (25 * oneDayMs),
-    },
-
-    // 5. Another developing civilization - recently active
-    {
-      id: 'sample-civ-5',
-      name: 'AI倫理ガイドライン策定',
-      purpose: '人工知能の倫理的使用に関する指針を作成',
+      id: 'sample-civ-2',
+      name: '持続可能な農業プロジェクト',
+      purpose: '有機農業技術の研究と実践',
       deadline: '2024-12-15',
       state: 'developing' as CivState,
-      lastProgressAt: now - (1 * oneDayMs), // 1 day ago
+      levels: createSampleLevels(30, 35), // Low-medium levels - village
+      lastProgressAt: now - (5 * oneDayMs), // 5 days ago
       createdAt: now - (20 * oneDayMs), // 20 days ago
-      updatedAt: now - (1 * oneDayMs),
+      updatedAt: now - (5 * oneDayMs),
     },
 
-    // 6. Level 4 developing civilization (not ocean state) - recently active
+    // 3. 町レベル - 中程度の発展
     {
-      id: 'sample-civ-6',
-      name: '量子コンピューティング研究',
-      purpose: '量子アルゴリズムの実装と最適化技術の開発',
-      deadline: '2025-01-30',
+      id: 'sample-civ-3',
+      name: '海洋環境保護プロジェクト',
+      purpose: '海洋プラスチック問題の解決策を研究する',
+      deadline: '2024-11-15',
       state: 'developing' as CivState,
+      levels: createSampleLevels(55, 60), // Medium levels - town
       lastProgressAt: now - (3 * oneDayMs), // 3 days ago
-      createdAt: now - (15 * oneDayMs), // 15 days ago
+      createdAt: now - (45 * oneDayMs), // 45 days ago
       updatedAt: now - (3 * oneDayMs),
+    },
+
+    // 4. 都市レベル - 高度に発展した文明
+    {
+      id: 'sample-civ-4',
+      name: 'AI倫理ガイドライン策定',
+      purpose: '人工知能の倫理的使用に関する指針を作成',
+      deadline: '2024-12-31',
+      state: 'developing' as CivState,
+      levels: createSampleLevels(85, 90), // High levels - city
+      lastProgressAt: now - (1 * oneDayMs), // 1 day ago
+      createdAt: now - (60 * oneDayMs), // 60 days ago
+      updatedAt: now - (1 * oneDayMs),
     },
   ];
 };
