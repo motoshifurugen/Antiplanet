@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/UI/Screen';
 import { StateBadge } from '../components/UI/StateBadge';
 import { Toast, ToastType } from '../components/UI/Toast';
@@ -44,6 +44,10 @@ interface ToastState {
 export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
   navigation: _navigation,
 }) => {
+  const route = useRoute();
+  const flatListRef = useRef<FlatList>(null);
+  const [selectedCivilizationId, setSelectedCivilizationId] = useState<string | undefined>();
+  
   const {
     civilizations,
     loading,
@@ -63,6 +67,26 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     message: '',
     type: 'info',
   });
+
+  // Get selected civilization ID from route params
+  useEffect(() => {
+    const params = route.params as { selectedCivilizationId?: string } | undefined;
+    if (params?.selectedCivilizationId) {
+      setSelectedCivilizationId(params.selectedCivilizationId);
+    }
+  }, [route.params]);
+
+  // Scroll to selected civilization when it's available
+  useEffect(() => {
+    if (selectedCivilizationId && civilizations.length > 0 && flatListRef.current) {
+      const index = civilizations.findIndex(civ => civ.id === selectedCivilizationId);
+      if (index >= 0) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index, animated: true });
+        }, 500); // Delay to ensure the list is rendered
+      }
+    }
+  }, [selectedCivilizationId, civilizations]);
 
   // Derive states when screen comes into focus
   useFocusEffect(
@@ -158,39 +182,48 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     }
   };
 
-  const renderCivilization = ({ item }: { item: Civilization }) => (
-    <View style={styles.civilizationCard}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <Text style={styles.civilizationName}>{item.name}</Text>
-          <StateBadge state={item.state} />
+  const renderCivilization = ({ item }: { item: Civilization }) => {
+    const isSelected = item.id === selectedCivilizationId;
+    
+    return (
+      <View style={[styles.civilizationCard, isSelected && styles.selectedCivilizationCard]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.civilizationName}>{item.name}</Text>
+            <StateBadge state={item.state} />
+            {isSelected && (
+              <View style={styles.selectedIndicator}>
+                <Icon name="success" size="xs" color="#FFFFFF" />
+              </View>
+            )}
+          </View>
         </View>
-      </View>
 
-              <Text style={styles.civilizationDetail}>{strings.civilization.fields.deadline}: {formatDate(item.deadline)}</Text>
+        <Text style={styles.civilizationDetail}>{strings.civilization.fields.deadline}: {formatDate(item.deadline)}</Text>
         <Text style={styles.civilizationDetail}>
           {strings.civilization.fields.lastProgress}: {formatRelativeTime(item.lastProgressAt)}
         </Text>
-      {item.purpose && <Text style={styles.civilizationPurpose}>{item.purpose}</Text>}
+        {item.purpose && <Text style={styles.civilizationPurpose}>{item.purpose}</Text>}
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.progressButton} onPress={() => handleLogProgress(item)}>
-          <Text style={styles.progressButtonText}>{strings.actions.recordProgress}</Text>
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.progressButton} onPress={() => handleLogProgress(item)}>
+            <Text style={styles.progressButtonText}>{strings.actions.recordProgress}</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.editButton} onPress={() => handleEditCivilization(item)}>
-          <Text style={styles.editButtonText}>{strings.actions.edit}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.editButton} onPress={() => handleEditCivilization(item)}>
+            <Text style={styles.editButtonText}>{strings.actions.edit}</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteCivilization(item)}
-        >
-          <Text style={styles.deleteButtonText}>{strings.actions.delete}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteCivilization(item)}
+          >
+            <Text style={styles.deleteButtonText}>{strings.actions.delete}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -228,6 +261,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
         </View>
 
         <FlatList
+          ref={flatListRef}
           data={civilizations}
           renderItem={renderCivilization}
           keyExtractor={item => item.id}
@@ -238,6 +272,13 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
           ]}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={handleRefresh} />}
           ListEmptyComponent={renderEmptyState}
+          onScrollToIndexFailed={(info) => {
+            // Handle scroll to index failure gracefully
+            console.warn('Failed to scroll to index:', info);
+            setTimeout(() => {
+              flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+            }, 100);
+          }}
         />
 
         <CivilizationModal
@@ -295,6 +336,17 @@ const styles = StyleSheet.create({
   civilizationCard: {
     ...ui.card,
     marginBottom: spacing.md,
+  },
+  selectedCivilizationCard: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10', // 10% opacity
+  },
+  selectedIndicator: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
   },
   cardHeader: {
     flexDirection: 'row',

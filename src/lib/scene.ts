@@ -128,24 +128,49 @@ export const detectMarkerHit = (
   screenWidth: number,
   screenHeight: number
 ): string | null => {
+  console.log('detectMarkerHit called with:', { x, y, screenWidth, screenHeight });
+  console.log('Scene markers count:', scene.markers.size);
+  
   // Convert screen coordinates to normalized device coordinates
   scene.pointer.x = (x / screenWidth) * 2 - 1;
   scene.pointer.y = -(y / screenHeight) * 2 + 1;
 
-  // Update raycaster
+  console.log('Normalized coordinates:', { x: scene.pointer.x, y: scene.pointer.y });
+
+  // Update raycaster with improved settings
   scene.raycaster.setFromCamera(scene.pointer, scene.camera);
+  
+  // Increase raycast precision by setting a threshold
+  scene.raycaster.params.Points.threshold = 0.1; // Increase threshold for better hit detection
 
   // Get all markers as array
   const markers = Array.from(scene.markers.values());
+  console.log('Markers array length:', markers.length);
   
-  // Perform raycast
-  const intersects = scene.raycaster.intersectObjects(markers);
+  // Perform raycast with recursive search for child objects
+  const intersects = scene.raycaster.intersectObjects(markers, true); // true = recursive
+  console.log('Raycast intersects:', intersects.length);
   
   if (intersects.length > 0) {
-    const hitMarker = intersects[0].object;
-    return hitMarker.userData.civilizationId as string;
+    const hitObject = intersects[0].object;
+    let civilizationId: string | null = null;
+    
+    // If hit object is a child (hit area), get civilization ID from parent
+    if (hitObject.parent && hitObject.parent.userData.civilizationId) {
+      civilizationId = hitObject.parent.userData.civilizationId as string;
+      console.log('Hit child object, using parent civilization ID:', civilizationId);
+    } else if (hitObject.userData.civilizationId) {
+      civilizationId = hitObject.userData.civilizationId as string;
+      console.log('Hit main marker, civilization ID:', civilizationId);
+    }
+    
+    if (civilizationId) {
+      console.log('Hit civilization ID:', civilizationId);
+      return civilizationId;
+    }
   }
   
+  console.log('No marker hit');
   return null;
 };
 

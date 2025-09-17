@@ -12,7 +12,7 @@ import { useAppStore } from '../../stores';
 
 export type RootStackParamList = {
   Home: undefined;
-  Civilizations: undefined;
+  Civilizations: { selectedCivilizationId?: string } | undefined;
   PlanetSettings: undefined;
 };
 

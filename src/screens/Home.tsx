@@ -56,6 +56,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [selectedCivilization, setSelectedCivilization] = useState<Civilization | null>(null);
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [progressLoading, setProgressLoading] = useState(false);
+  
   const [toast, setToast] = useState<ToastState>({
     visible: false,
     message: '',
@@ -215,10 +216,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleRecordProgress = async (civilization: Civilization) => {
+  const handleRecordProgress = async (civilization: Civilization, note?: string) => {
     setProgressLoading(true);
     try {
-      await logProgress(civilization.id);
+      await logProgress(civilization.id, note);
       showToast(strings.messages.progressLogged, 'success');
       
       // Update the scene markers after progress is recorded
@@ -412,7 +413,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
 
             {/* 3D Planet View with gesture handlers */}
-            <TapGestureHandler onGestureEvent={handleTapGestureEvent}>
+            <TapGestureHandler 
+              onHandlerStateChange={(event) => {
+                if (event.nativeEvent.state === State.END) {
+                  handleTapGestureEvent(event);
+                }
+              }}
+            >
               <PinchGestureHandler
                 onGestureEvent={handlePinchGestureEvent}
                 onHandlerStateChange={handlePinchStateChange}

@@ -256,7 +256,7 @@ export const createCivilizationMarker = (
   });
   
   // Create sphere geometry for civilization markers
-  const baseRadius = 0.04 * markerSize; // Increased base size from 0.03
+  const baseRadius = 0.08 * markerSize; // Doubled the base size for better hit detection
   const markerGeometry = new THREE.SphereGeometry(baseRadius, 16, 12);
   const markerMaterial = new THREE.MeshStandardMaterial({
     color: markerColor,
@@ -270,6 +270,19 @@ export const createCivilizationMarker = (
   
   const marker = new THREE.Mesh(markerGeometry, markerMaterial);
   marker.position.copy(position);
+  
+  // Add invisible bounding box for better hit detection
+  const boundingBox = new THREE.BoxGeometry(baseRadius * 2, baseRadius * 2, baseRadius * 2);
+  const invisibleMaterial = new THREE.MeshBasicMaterial({ 
+    visible: false, 
+    transparent: true, 
+    opacity: 0 
+  });
+  const hitArea = new THREE.Mesh(boundingBox, invisibleMaterial);
+  hitArea.position.copy(position);
+  
+  // Add hit area to marker for better detection
+  marker.add(hitArea);
   
   // Apply gravity-like flattening towards planet center
   // Calculate the normal direction from planet center to marker position
@@ -336,6 +349,8 @@ export const updateCivilizationMarkers = (
   scene: PlanetScene,
   civilizations: Civilization[]
 ): void => {
+  console.log('Updating civilization markers:', civilizations.length);
+  
   // Remove existing markers
   scene.markers.forEach(marker => {
     // Find spin group in scene
@@ -355,9 +370,12 @@ export const updateCivilizationMarkers = (
   // Add new markers (skip ocean state)
   civilizations.forEach((civilization, index) => {
     if (civilization.state === 'ocean') {
+      console.log(`Skipping ocean civilization: ${civilization.name}`);
       return; // Don't render ocean civilizations
     }
 
+    console.log(`Creating marker for: ${civilization.name} (${civilization.state})`);
+    
     // Pass existing civilizations to ensure proper region assignment
     const position = getCivilizationPosition(civilization, index, civilizations);
     const marker = createCivilizationMarker(civilization, position);
@@ -372,9 +390,14 @@ export const updateCivilizationMarkers = (
     
     if (spinGroup) {
       (spinGroup as THREE.Group).add(marker);
+      console.log(`Added marker for ${civilization.name} to scene`);
+    } else {
+      console.error(`Could not find spin group for ${civilization.name}`);
     }
     scene.markers.set(civilization.id, marker);
   });
+  
+  console.log(`Total markers created: ${scene.markers.size}`);
 };
 
 /**

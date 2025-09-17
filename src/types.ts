@@ -50,6 +50,7 @@ export type ProgressLog = {
   id: string;
   civId: string;
   createdAt: number; // server timestamp in milliseconds
+  note?: string; // optional memo for progress entry
 };
 
 // Utility types for working with timestamps

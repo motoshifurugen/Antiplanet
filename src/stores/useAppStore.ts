@@ -71,7 +71,7 @@ interface AppState {
   refreshCiv: (id: string) => Promise<void>;
 
   // Progress actions
-  logProgress: (id: string) => Promise<void>;
+  logProgress: (id: string, note?: string) => Promise<void>;
 
   // State derivation
   deriveCivStates: () => Promise<void>;
@@ -315,7 +315,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // Log progress for a civilization - Local storage based
-  logProgress: async (id: string) => {
+  logProgress: async (id: string, note?: string) => {
     const { uid } = get();
     
     if (!uid) {
@@ -339,7 +339,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       const progressLog = {
         id: 'log-' + Date.now(),
         civId: id,
-        timestamp: Date.now(),
+        createdAt: Date.now(),
+        note: note || undefined,
       };
       
       const existingLogs = await loadFromStorage(STORAGE_KEYS.PROGRESS_LOGS) || [];
