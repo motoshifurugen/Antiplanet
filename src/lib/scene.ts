@@ -97,6 +97,7 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
     markers: new Map(),
     raycaster,
     pointer,
+    spinGroup,
   };
 };
 
@@ -113,9 +114,6 @@ export const resizeScene = (
   scene.camera.aspect = aspectRatio;
   scene.camera.updateProjectionMatrix();
   scene.renderer.setSize(width, height);
-  
-  // Ensure proper aspect ratio to prevent sphere distortion
-  console.log(`Screen resize: ${width}x${height}, aspect ratio: ${aspectRatio.toFixed(2)}`);
 };
 
 /**
@@ -128,14 +126,9 @@ export const detectMarkerHit = (
   screenWidth: number,
   screenHeight: number
 ): string | null => {
-  console.log('detectMarkerHit called with:', { x, y, screenWidth, screenHeight });
-  console.log('Scene markers count:', scene.markers.size);
-  
   // Convert screen coordinates to normalized device coordinates
   scene.pointer.x = (x / screenWidth) * 2 - 1;
   scene.pointer.y = -(y / screenHeight) * 2 + 1;
-
-  console.log('Normalized coordinates:', { x: scene.pointer.x, y: scene.pointer.y });
 
   // Update raycaster with improved settings
   scene.raycaster.setFromCamera(scene.pointer, scene.camera);
@@ -145,11 +138,9 @@ export const detectMarkerHit = (
 
   // Get all markers as array
   const markers = Array.from(scene.markers.values());
-  console.log('Markers array length:', markers.length);
   
   // Perform raycast with recursive search for child objects
   const intersects = scene.raycaster.intersectObjects(markers, true); // true = recursive
-  console.log('Raycast intersects:', intersects.length);
   
   if (intersects.length > 0) {
     const hitObject = intersects[0].object;
@@ -158,19 +149,15 @@ export const detectMarkerHit = (
     // If hit object is a child (hit area), get civilization ID from parent
     if (hitObject.parent && hitObject.parent.userData.civilizationId) {
       civilizationId = hitObject.parent.userData.civilizationId as string;
-      console.log('Hit child object, using parent civilization ID:', civilizationId);
     } else if (hitObject.userData.civilizationId) {
       civilizationId = hitObject.userData.civilizationId as string;
-      console.log('Hit main marker, civilization ID:', civilizationId);
     }
     
     if (civilizationId) {
-      console.log('Hit civilization ID:', civilizationId);
       return civilizationId;
     }
   }
   
-  console.log('No marker hit');
   return null;
 };
 

@@ -248,12 +248,6 @@ export const createCivilizationMarker = (
     ? getMarkerSizeByLevel(civilization.levels.classification)
     : 1.0; // Default size for legacy state system
   
-  // Debug logging
-  console.log(`Creating marker for ${civilization.name}:`, {
-    level: civilization.levels?.classification,
-    color: markerColor.toString(16),
-    size: markerSize
-  });
   
   // Create sphere geometry for civilization markers
   const baseRadius = 0.08 * markerSize; // Doubled the base size for better hit detection
@@ -349,55 +343,25 @@ export const updateCivilizationMarkers = (
   scene: PlanetScene,
   civilizations: Civilization[]
 ): void => {
-  console.log('Updating civilization markers:', civilizations.length);
-  
   // Remove existing markers
   scene.markers.forEach(marker => {
-    // Find spin group in scene
-    let spinGroup: THREE.Group | null = null;
-    scene.scene.traverse((object) => {
-      if (object instanceof THREE.Group && object.children.includes(scene.planet)) {
-        spinGroup = object;
-      }
-    });
-    
-    if (spinGroup) {
-      (spinGroup as THREE.Group).remove(marker);
-    }
+    scene.spinGroup.remove(marker);
   });
   scene.markers.clear();
 
   // Add new markers (skip ocean state)
   civilizations.forEach((civilization, index) => {
     if (civilization.state === 'ocean') {
-      console.log(`Skipping ocean civilization: ${civilization.name}`);
       return; // Don't render ocean civilizations
     }
-
-    console.log(`Creating marker for: ${civilization.name} (${civilization.state})`);
     
     // Pass existing civilizations to ensure proper region assignment
     const position = getCivilizationPosition(civilization, index, civilizations);
     const marker = createCivilizationMarker(civilization, position);
     
-    // Find spin group in scene
-    let spinGroup: THREE.Group | null = null;
-    scene.scene.traverse((object) => {
-      if (object instanceof THREE.Group && object.children.includes(scene.planet)) {
-        spinGroup = object as THREE.Group;
-      }
-    });
-    
-    if (spinGroup) {
-      (spinGroup as THREE.Group).add(marker);
-      console.log(`Added marker for ${civilization.name} to scene`);
-    } else {
-      console.error(`Could not find spin group for ${civilization.name}`);
-    }
+    scene.spinGroup.add(marker);
     scene.markers.set(civilization.id, marker);
   });
-  
-  console.log(`Total markers created: ${scene.markers.size}`);
 };
 
 /**
@@ -412,17 +376,7 @@ export const updateMarkerState = (
   if (marker) {
     if (civilization.state === 'ocean') {
       // Remove marker for ocean state
-      // Find spin group in scene
-      let spinGroup: THREE.Group | null = null;
-      scene.scene.traverse((object) => {
-        if (object instanceof THREE.Group && object.children.includes(scene.planet)) {
-          spinGroup = object as THREE.Group;
-        }
-      });
-      
-      if (spinGroup) {
-        (spinGroup as THREE.Group).remove(marker);
-      }
+      scene.spinGroup.remove(marker);
       scene.markers.delete(civilizationId);
     } else {
       // Update marker color, size, and emissive based on new level system

@@ -14,6 +14,7 @@ export interface PlanetScene {
   markers: Map<string, THREE.Mesh>;
   raycaster: THREE.Raycaster;
   pointer: THREE.Vector2;
+  spinGroup: THREE.Group;
 }
 
 export interface CivilizationMarker {
