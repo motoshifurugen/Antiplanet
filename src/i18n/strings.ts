@@ -1,11 +1,11 @@
 // アプリ全体で使用する文字列を一元管理
 export const strings = {
   // アプリ名
-  appName: 'StellarLog',
+  appName: 'Planit',
   
   // イントロ画面（Step 0）
   intro: {
-    title: 'ようこそ、StellarLogへ',
+    title: 'ようこそ、Planitへ',
     narrative: 'あなたが挑戦するたびに、\n星は呼吸し、文明は進化していく。\n\n偶然も、つまずきも、\nすべてが星の糧となり、\n少しずつ大地が広がり、\n灯りがともっていく。\n\nこれは、あなただけの物語を刻むアプリです。',
     cta: 'はじめる',
   },
@@ -20,13 +20,13 @@ export const strings = {
   // 画面タイトル
   screens: {
     home: {
-      title: 'StellarLog',
+      title: 'Planit',
       hintTitle: '最初の挑戦を登録しましょう',
       hintCta: '挑戦を追加',
     },
     planetSettings: {
       title: '星のビジョンを決める',
-      subtitle: 'このビジョンがあなたのStellarLogを導きます',
+      subtitle: 'このビジョンがあなたのPlanitを導きます',
       fields: {
         vision: 'ビジョン',
         deadline: '期限',
