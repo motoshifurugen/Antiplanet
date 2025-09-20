@@ -217,8 +217,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleRecordProgress = async (civilization: Civilization) => {
-    // This function is now handled by CivilizationBottomSheet directly
-    // No need to navigate to another screen
+    try {
+      setProgressLoading(true);
+      
+      // Log progress to update lastProgressAt timestamp
+      await logProgress(civilization.id);
+      
+      // Derive states to refresh the 3D scene with updated markers
+      await deriveCivStates();
+      
+      // Show success toast
+      showToast('進捗が記録されました！', 'success');
+    } catch (error) {
+      console.error('Failed to record progress:', error);
+      showToast('進捗の記録に失敗しました', 'error');
+    } finally {
+      setProgressLoading(false);
+    }
   };
 
   // Cleanup on unmount

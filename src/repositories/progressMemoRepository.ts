@@ -119,8 +119,12 @@ export const createProgressMemo = async (
       throw new Error('今日の進捗メモは既に存在します。編集モードを使用してください。');
     }
 
-    // Calculate level change
-    const currentLevel = existingMemo?.levelAfter || 0;
+    // Calculate current level from the latest memo for this civilization
+    const civMemos = allMemos
+      .filter(memo => memo.civId === civId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const currentLevel = civMemos.length > 0 ? civMemos[0].levelAfter : 0;
     const levelChange = calculateLevelChange(civId, allMemos, currentLevel);
     const levelAfter = Math.max(0, currentLevel + levelChange);
 
