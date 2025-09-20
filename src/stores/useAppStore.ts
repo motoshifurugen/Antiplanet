@@ -7,6 +7,9 @@ import {
   CreateCivilizationRequest,
   UpdateCivilizationRequest,
   CreateProgressLogRequest,
+  ProgressMemo,
+  CreateProgressMemoRequest,
+  UpdateProgressMemoRequest,
 } from '../types';
 import {
   deriveCivilizationState,
@@ -19,6 +22,13 @@ import {
   createSamplePlanetGoal, 
   shouldSeedSampleData 
 } from '../lib/sampleData';
+import {
+  createProgressMemo,
+  updateProgressMemo,
+  getTodayProgressMemo,
+  getProgressMemos,
+  hasTodayProgressMemo,
+} from '../repositories/progressMemoRepository';
 
 // Local storage keys
 const STORAGE_KEYS = {
@@ -54,6 +64,13 @@ interface AppState {
   civilizations: Civilization[];
   loading: boolean;
   authLoading: boolean;
+  
+  // Toast state
+  toast: {
+    visible: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  };
 
   // Actions
   initializeAuth: () => Promise<void>;
@@ -73,11 +90,22 @@ interface AppState {
   // Progress actions
   logProgress: (id: string, note?: string) => Promise<void>;
 
+  // Progress memo actions
+  createProgressMemo: (civId: string, data: CreateProgressMemoRequest) => Promise<string>;
+  updateProgressMemo: (civId: string, data: UpdateProgressMemoRequest) => Promise<void>;
+  getTodayProgressMemo: (civId: string) => Promise<ProgressMemo | null>;
+  getProgressMemos: (civId: string) => Promise<ProgressMemo[]>;
+  hasTodayProgressMemo: (civId: string) => Promise<boolean>;
+
   // State derivation
   deriveCivStates: () => Promise<void>;
 
   // Sample data seeding
   seedSampleData: () => Promise<void>;
+  
+  // Toast actions
+  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  hideToast: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -88,6 +116,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   civilizations: [],
   loading: false,
   authLoading: false,
+  
+  // Toast initial state
+  toast: {
+    visible: false,
+    message: '',
+    type: 'info' as const,
+  },
 
   // Initialize authentication - Local storage based
   initializeAuth: async () => {
@@ -354,6 +389,94 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  // Create progress memo for a civilization
+  createProgressMemo: async (civId: string, data: CreateProgressMemoRequest) => {
+    const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot create progress memo: no UID');
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      const memoId = await createProgressMemo(civId, data);
+      console.log('Progress memo created:', memoId);
+      return memoId;
+    } catch (error) {
+      console.error('Failed to create progress memo:', error);
+      throw error;
+    }
+  },
+
+  // Update progress memo for a civilization
+  updateProgressMemo: async (civId: string, data: UpdateProgressMemoRequest) => {
+    const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot update progress memo: no UID');
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      await updateProgressMemo(civId, data);
+      console.log('Progress memo updated');
+    } catch (error) {
+      console.error('Failed to update progress memo:', error);
+      throw error;
+    }
+  },
+
+  // Get today's progress memo for a civilization
+  getTodayProgressMemo: async (civId: string) => {
+    const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot get today\'s progress memo: no UID');
+      return null;
+    }
+
+    try {
+      return await getTodayProgressMemo(civId);
+    } catch (error) {
+      console.error('Failed to get today\'s progress memo:', error);
+      return null;
+    }
+  },
+
+  // Get all progress memos for a civilization
+  getProgressMemos: async (civId: string) => {
+    const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot get progress memos: no UID');
+      return [];
+    }
+
+    try {
+      return await getProgressMemos(civId);
+    } catch (error) {
+      console.error('Failed to get progress memos:', error);
+      return [];
+    }
+  },
+
+  // Check if civilization has progress memo for today
+  hasTodayProgressMemo: async (civId: string) => {
+    const { uid } = get();
+    
+    if (!uid) {
+      console.warn('Cannot check today\'s progress memo: no UID');
+      return false;
+    }
+
+    try {
+      return await hasTodayProgressMemo(civId);
+    } catch (error) {
+      console.error('Failed to check today\'s progress memo:', error);
+      return false;
+    }
+  },
+
   // Derive current states and levels for all civilizations - Local storage based
   deriveCivStates: async () => {
     const { civilizations, uid } = get();
@@ -453,5 +576,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       console.error('Failed to seed sample data:', error);
       throw error;
     }
+  },
+
+  // Toast actions
+  showToast: (message: string, type: 'success' | 'error' | 'info') => {
+    set({
+      toast: {
+        visible: true,
+        message,
+        type,
+      },
+    });
+  },
+
+  hideToast: () => {
+    console.log('hideToast called');
+    set({
+      toast: {
+        visible: false,
+        message: '',
+        type: 'info',
+      },
+    });
   },
 }));

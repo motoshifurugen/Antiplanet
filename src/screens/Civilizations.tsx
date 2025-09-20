@@ -16,8 +16,9 @@ import { StateBadge } from '../components/UI/StateBadge';
 import { Toast, ToastType } from '../components/UI/Toast';
 import { Icon } from '../components/UI/Icon';
 import { CivilizationModal } from '../components/CivilizationModal';
+import { ProgressMemoModal } from '../components/ProgressMemoModal';
 import { useAppStore } from '../stores';
-import { Civilization, CreateCivilizationRequest, UpdateCivilizationRequest } from '../types';
+import { Civilization, CreateCivilizationRequest, UpdateCivilizationRequest, ProgressMemo, CreateProgressMemoRequest, UpdateProgressMemoRequest } from '../types';
 import { formatRelativeTime, formatDate } from '../lib/dateUtils';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -56,12 +57,23 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     updateCiv,
     deleteCiv,
     logProgress,
+    createProgressMemo,
+    updateProgressMemo,
+    getTodayProgressMemo,
+    hasTodayProgressMemo,
     deriveCivStates,
   } = useAppStore();
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCivilization, setEditingCivilization] = useState<Civilization | undefined>();
   const [modalLoading, setModalLoading] = useState(false);
+  
+  // Progress memo modal state
+  const [progressMemoModalVisible, setProgressMemoModalVisible] = useState(false);
+  const [selectedCivilizationForMemo, setSelectedCivilizationForMemo] = useState<Civilization | undefined>();
+  const [editingProgressMemo, setEditingProgressMemo] = useState<ProgressMemo | undefined>();
+  const [progressMemoModalLoading, setProgressMemoModalLoading] = useState(false);
+  
   const [toast, setToast] = useState<ToastState>({
     visible: false,
     message: '',
@@ -182,6 +194,57 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     }
   };
 
+  const handleProgressMemo = async (civilization: Civilization) => {
+    try {
+      // Check if today's memo already exists
+      const hasTodayMemo = await hasTodayProgressMemo(civilization.id);
+      
+      if (hasTodayMemo) {
+        // Edit existing memo
+        const todayMemo = await getTodayProgressMemo(civilization.id);
+        setEditingProgressMemo(todayMemo || undefined);
+      } else {
+        // Create new memo
+        setEditingProgressMemo(undefined);
+      }
+      
+      setSelectedCivilizationForMemo(civilization);
+      setProgressMemoModalVisible(true);
+    } catch (error) {
+      console.error('Failed to handle progress memo:', error);
+      showToast('進捗メモの取得に失敗しました', 'error');
+    }
+  };
+
+  const handleSubmitProgressMemo = async (
+    data: CreateProgressMemoRequest | UpdateProgressMemoRequest
+  ) => {
+    if (!selectedCivilizationForMemo) return;
+    
+    setProgressMemoModalLoading(true);
+    try {
+      if (editingProgressMemo) {
+        // Update existing memo
+        await updateProgressMemo(selectedCivilizationForMemo.id, data as UpdateProgressMemoRequest);
+        showToast('進捗メモを更新しました', 'success');
+      } else {
+        // Create new memo
+        await createProgressMemo(selectedCivilizationForMemo.id, data as CreateProgressMemoRequest);
+        showToast('進捗メモを記録しました', 'success');
+      }
+      
+      // Update civilization's lastProgressAt timestamp
+      await logProgress(selectedCivilizationForMemo.id);
+      deriveCivStates();
+    } catch (error) {
+      console.error('Failed to submit progress memo:', error);
+      showToast('進捗メモの保存に失敗しました', 'error');
+      throw error; // Re-throw to prevent modal from closing
+    } finally {
+      setProgressMemoModalLoading(false);
+    }
+  };
+
   const renderCivilization = ({ item }: { item: Civilization }) => {
     const isSelected = item.id === selectedCivilizationId;
     
@@ -206,19 +269,8 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
         {item.purpose && <Text style={styles.civilizationPurpose}>{item.purpose}</Text>}
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.progressButton} onPress={() => handleLogProgress(item)}>
-            <Text style={styles.progressButtonText}>{strings.actions.recordProgress}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.editButton} onPress={() => handleEditCivilization(item)}>
-            <Text style={styles.editButtonText}>{strings.actions.edit}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteCivilization(item)}
-          >
-            <Text style={styles.deleteButtonText}>{strings.actions.delete}</Text>
+          <TouchableOpacity style={styles.progressButton} onPress={() => handleProgressMemo(item)}>
+            <Text style={styles.progressButtonText}>進捗メモ</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -287,6 +339,15 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
           onSubmit={handleSubmitCivilization}
           civilization={editingCivilization}
           loading={modalLoading}
+        />
+
+        <ProgressMemoModal
+          visible={progressMemoModalVisible}
+          onClose={() => setProgressMemoModalVisible(false)}
+          onSubmit={handleSubmitProgressMemo}
+          memo={editingProgressMemo}
+          loading={progressMemoModalLoading}
+          isEditMode={!!editingProgressMemo}
         />
 
         <Toast {...toast} onHide={hideToast} />
@@ -377,42 +438,16 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   actionButtons: {
-    flexDirection: 'row',
     marginTop: spacing.md,
-    gap: spacing.sm,
   },
   progressButton: {
     ...ui.button.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
   },
   progressButtonText: {
-    ...typography.small,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  editButton: {
-    ...ui.button.warning,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    flex: 1,
-  },
-  editButtonText: {
-    ...typography.small,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  deleteButton: {
-    ...ui.button.error,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    flex: 1,
-  },
-  deleteButtonText: {
-    ...typography.small,
+    ...typography.subheading,
     color: '#FFFFFF',
     fontWeight: '600',
     textAlign: 'center',

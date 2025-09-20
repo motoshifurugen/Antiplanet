@@ -216,23 +216,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleRecordProgress = async (civilization: Civilization, note?: string) => {
-    setProgressLoading(true);
-    try {
-      await logProgress(civilization.id, note);
-      showToast(strings.messages.progressLogged, 'success');
-      
-      // Update the scene markers after progress is recorded
-      if (scene) {
-        // Derive states again to get updated state
-        deriveCivStates();
-      }
-    } catch (error) {
-      console.error('Failed to record progress:', error);
-      showToast(strings.messages.progressFailed, 'error');
-    } finally {
-      setProgressLoading(false);
-    }
+  const handleRecordProgress = async (civilization: Civilization) => {
+    // This function is now handled by CivilizationBottomSheet directly
+    // No need to navigate to another screen
   };
 
   // Cleanup on unmount
@@ -399,6 +385,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 <Icon name="planet" size="md" color={colors.primary} />
                 <Text style={styles.headerTitle}>星のビジョン</Text>
               </TouchableOpacity>
+              
+              <View style={styles.headerCenter}>
+                <TouchableOpacity 
+                  style={styles.headerCenterButton}
+                  onPress={() => navigation.navigate('History')}
+                >
+                  <Icon name="history" size="md" color={colors.primary} />
+                  <Text style={styles.headerTitle}>履歴</Text>
+                </TouchableOpacity>
+              </View>
               
               <TouchableOpacity 
                 style={styles.headerRight}
@@ -603,10 +599,23 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerCenterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   headerTitle: {
     ...typography.subheading,

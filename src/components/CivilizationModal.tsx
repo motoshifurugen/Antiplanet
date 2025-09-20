@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
   ActionSheetIOS,

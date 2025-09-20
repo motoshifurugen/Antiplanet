@@ -1,4 +1,4 @@
-// Bottom sheet for civilization info and actions
+// Simplified bottom sheet for civilization info and progress recording
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -9,27 +9,26 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
-  TextInput,
-  ScrollView,
-  FlatList,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
-import { Civilization, ProgressLog } from '../types';
-import { StateBadge } from './UI/StateBadge';
+import { Civilization, ProgressMemo, CreateProgressMemoRequest, UpdateProgressMemoRequest } from '../types';
 import { Icon } from './UI/Icon';
-import { formatRelativeTime, formatDate, calculateRemainingDays, formatRemainingDays } from '../lib/dateUtils';
+import { formatDate } from '../lib/dateUtils';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { ui } from '../theme/ui';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ProgressMemoModal } from './ProgressMemoModal';
+import { createProgressMemo, updateProgressMemo } from '../repositories/progressMemoRepository';
 
 interface CivilizationBottomSheetProps {
   visible: boolean;
   civilization: Civilization | null;
   onClose: () => void;
-  onRecordProgress: (civilization: Civilization, note?: string) => Promise<void>;
+  onRecordProgress: (civilization: Civilization) => Promise<void>;
   loading?: boolean;
 }
 
@@ -40,126 +39,77 @@ export const CivilizationBottomSheet: React.FC<CivilizationBottomSheetProps> = (
   onRecordProgress,
   loading = false,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showProgressForm, setShowProgressForm] = useState(false);
-  const [progressNote, setProgressNote] = useState('');
-  const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([]);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [remainingDays, setRemainingDays] = useState<number | null>(null);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [showFixedCloseButton, setShowFixedCloseButton] = useState(true); // Always show
-  const [scrollOffset, setScrollOffset] = useState(0);
-  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [latestMemo, setLatestMemo] = useState<ProgressMemo | null>(null);
+  const [memoLoading, setMemoLoading] = useState(false);
+  const [progressMemoModalVisible, setProgressMemoModalVisible] = useState(false);
+  const [editingMemo, setEditingMemo] = useState<ProgressMemo | undefined>();
+  const [memoModalLoading, setMemoModalLoading] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   
-  const translateY = new Animated.Value(0);
+  const screenHeight = Dimensions.get('window').height;
+  const translateY = new Animated.Value(screenHeight);
+  const fadeAnim = new Animated.Value(0);
 
-  // Load progress logs when civilization changes
+  // Load latest progress memo when civilization changes
   useEffect(() => {
     if (civilization) {
-      loadProgressLogs();
+      loadLatestMemo();
     }
   }, [civilization]);
 
-  // Update remaining days when civilization changes
+  // Animation control functions
+  const animateIn = () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    
+    fadeAnim.setValue(1);
+    translateY.setValue(0);
+    
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 100);
+  };
+
+  const animateOut = () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    
+    fadeAnim.setValue(0);
+    translateY.setValue(screenHeight);
+    
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 100);
+  };
+
+  // Simple animation - just show/hide
   useEffect(() => {
-    if (civilization) {
-      const days = calculateRemainingDays(civilization.deadline);
-      setRemainingDays(days);
+    if (visible) {
+      animateIn();
+    } else {
+      animateOut();
     }
-  }, [civilization]);
+  }, [visible]);
 
-  const handleScroll = (event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const isScrollingUp = contentOffset.y > 0;
-    
-    setScrollOffset(contentOffset.y);
-    
-    // Check if we can scroll up (not at the top)
-    const canScroll = contentOffset.y > 0;
-    setCanScrollUp(canScroll);
-    
-    console.log('Scroll event:', { 
-      contentOffset: contentOffset.y, 
-      canScrollUp: canScroll,
-      isScrollingUp,
-      contentSize: contentSize.height,
-      layoutMeasurement: layoutMeasurement.height
-    });
-    
-    if (isScrollingUp && !isExpanded) {
-      setIsExpanded(true);
-    }
-    
-    setIsScrolling(isScrollingUp);
-  };
-
-  const handleScrollBeginDrag = () => {
-    setIsScrolling(true);
-  };
-
-  const handleScrollEndDrag = () => {
-    setIsScrolling(false);
-  };
-
-  const handlePanGestureEvent = (event: any) => {
-    const { translationY } = event.nativeEvent;
-    
-    console.log('Pan gesture event:', { translationY, canScrollUp, scrollOffset });
-    
-    // Only allow downward swipe when at the top of scroll
-    if (!canScrollUp && translationY > 0) {
-      translateY.setValue(translationY);
-    }
-  };
-
-  const handlePanStateChange = (event: any) => {
-    const { state, translationY, velocityY } = event.nativeEvent;
-    
-    console.log('Pan gesture state change:', { 
-      state, 
-      translationY, 
-      velocityY, 
-      canScrollUp, 
-      scrollOffset 
-    });
-    
-    if (state === State.END) {
-      // Only close if we're at the top of scroll and swiped down
-      if (!canScrollUp && (translationY > 2 || velocityY > 10)) {
-        console.log('Closing sheet with swipe');
-        Animated.timing(translateY, {
-          toValue: 1000,
-          duration: 200,
-          useNativeDriver: true,
-        }).start(() => {
-          onClose();
-        });
-      } else {
-        console.log('Snapping back to original position');
-        // Snap back to original position
-        Animated.spring(translateY, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start();
-      }
-    }
-  };
-
-  const loadProgressLogs = async () => {
+  const loadLatestMemo = async () => {
     if (!civilization) return;
     
-    setLogsLoading(true);
+    setMemoLoading(true);
     try {
-      const existingLogs = await AsyncStorage.getItem('progress_logs');
-      const allLogs = existingLogs ? JSON.parse(existingLogs) : [];
-      const civLogs = allLogs
-        .filter((log: any) => log.civId === civilization.id)
-        .sort((a: any, b: any) => b.createdAt - a.createdAt);
-      setProgressLogs(civLogs);
+      // Load progress memos from AsyncStorage
+      const memosData = await AsyncStorage.getItem('progress_memos');
+      if (memosData) {
+        const allMemos: ProgressMemo[] = JSON.parse(memosData);
+        const civMemos = allMemos
+          .filter(memo => memo.civId === civilization.id)
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        setLatestMemo(civMemos.length > 0 ? civMemos[0] : null);
+      }
     } catch (error) {
-      console.error('Failed to load progress logs:', error);
+      console.error('Failed to load latest memo:', error);
     } finally {
-      setLogsLoading(false);
+      setMemoLoading(false);
     }
   };
 
@@ -167,313 +117,177 @@ export const CivilizationBottomSheet: React.FC<CivilizationBottomSheetProps> = (
     if (!civilization) return;
     
     try {
-      await onRecordProgress(civilization, progressNote.trim() || undefined);
-      setProgressNote('');
-      setShowProgressForm(false);
-      // Reload logs to show the new entry
-      await loadProgressLogs();
+      // Check if today's memo already exists
+      const today = new Date().toISOString().split('T')[0];
+      const memosData = await AsyncStorage.getItem('progress_memos');
+      
+      if (memosData) {
+        const allMemos: ProgressMemo[] = JSON.parse(memosData);
+        const todayMemo = allMemos.find(memo => 
+          memo.civId === civilization.id && memo.date === today
+        );
+        
+        if (todayMemo) {
+          // Edit existing memo
+          setEditingMemo(todayMemo);
+        } else {
+          // Create new memo
+          setEditingMemo(undefined);
+        }
+      } else {
+        // Create new memo
+        setEditingMemo(undefined);
+      }
+      
+      setProgressMemoModalVisible(true);
     } catch (error) {
-      console.error('Failed to record progress:', error);
+      console.error('Failed to check today\'s memo:', error);
     }
   };
 
-  const getRemainingDaysStyle = () => {
-    if (remainingDays === null) return styles.remainingDaysNeutral;
-    if (remainingDays <= 0) return styles.remainingDaysOverdue;
-    if (remainingDays <= 7) return styles.remainingDaysUrgent;
-    return styles.remainingDaysNormal;
+  const handleSubmitProgressMemo = async (
+    data: CreateProgressMemoRequest | UpdateProgressMemoRequest
+  ) => {
+    if (!civilization) return;
+    
+    setMemoModalLoading(true);
+    try {
+      if (editingMemo) {
+        // Update existing memo
+        await updateProgressMemo(civilization.id, data as UpdateProgressMemoRequest);
+      } else {
+        // Create new memo
+        await createProgressMemo(civilization.id, data as CreateProgressMemoRequest);
+      }
+      
+      // Update civilization's lastProgressAt timestamp
+      await onRecordProgress(civilization);
+      
+      // Reload latest memo after recording
+      await loadLatestMemo();
+      
+      setProgressMemoModalVisible(false);
+    } catch (error) {
+      console.error('Failed to submit progress memo:', error);
+      throw error; // Re-throw to prevent modal from closing
+    } finally {
+      setMemoModalLoading(false);
+    }
   };
 
-  const getRemainingDaysText = () => {
-    if (remainingDays === null) return '期限不明';
-    if (remainingDays === 0) return '今日が期限';
-    if (remainingDays > 0) return `残り${remainingDays}日`;
-    return `${Math.abs(remainingDays)}日超過`;
+  const handlePanGesture = (event: any) => {
+    if (isAnimating) return; // Prevent gesture during animation
+    
+    const { translationY, state } = event.nativeEvent;
+    
+    if (state === State.ACTIVE) {
+      translateY.setValue(Math.max(0, translationY));
+    } else if (state === State.END) {
+      if (translationY > screenHeight * 0.15) {
+        // Close immediately
+        animateOut();
+        onClose();
+      } else {
+        // Return to original position
+        translateY.setValue(0);
+      }
+    }
   };
 
-  const renderProgressLogItem = ({ item }: { item: ProgressLog }) => (
-    <View style={styles.logItem}>
-      <Text style={styles.logDate}>
-        {new Date(item.createdAt).toLocaleDateString('ja-JP', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        })}
-      </Text>
-      {item.note && (
-        <Text style={styles.logNote} numberOfLines={3}>
-          {item.note}
-        </Text>
-      )}
-    </View>
-  );
-
-  if (!civilization) {
-    return null;
-  }
+  if (!civilization) return null;
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="overFullScreen"
-      transparent={true}
+      transparent
+      animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         <Pressable style={styles.overlayPressable} onPress={onClose} />
-        <PanGestureHandler
-          onGestureEvent={handlePanGestureEvent}
-          onHandlerStateChange={handlePanStateChange}
-          activeOffsetY={0.5}
-          failOffsetX={[-5, 5]}
-          shouldCancelWhenOutside={false}
-          simultaneousHandlers={[]}
-        >
-          <Animated.View 
+        
+        <PanGestureHandler onHandlerStateChange={handlePanGesture}>
+          <Animated.View
             style={[
-              styles.container, 
-              isExpanded && styles.containerExpanded,
+              styles.container,
               { transform: [{ translateY }] }
             ]}
           >
-            <ScrollView 
-              style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={true}
-              bounces={true}
-              onScroll={handleScroll}
-              onScrollBeginDrag={handleScrollBeginDrag}
-              onScrollEndDrag={handleScrollEndDrag}
-              scrollEventThrottle={16}
-              scrollEnabled={true}
-              nestedScrollEnabled={false}
-            >
             {/* Handle bar */}
-            <TouchableOpacity 
-              style={styles.handleBar} 
-              onPress={() => setIsExpanded(!isExpanded)}
-            />
-
+            <View style={styles.handleBar} />
+            
             {/* Header */}
             <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <Text style={styles.name}>{civilization.name}</Text>
-                <StateBadge state={civilization.state} />
-              </View>
-              <View style={styles.headerRight}>
-                <Text style={[styles.remainingDays, getRemainingDaysStyle()]}>
-                  {getRemainingDaysText()}
+              <Text style={styles.civilizationName}>{civilization.name}</Text>
+            </View>
+
+            {/* Level Display */}
+            <View style={styles.levelSection}>
+              <Text style={styles.levelLabel}>現在のレベル</Text>
+              <View style={styles.levelContainer}>
+                <Text style={styles.levelValue}>
+                  Lv.{civilization.levels?.totalLevel || 0}
                 </Text>
-                <TouchableOpacity 
-                  style={styles.closeButton}
-                  onPress={onClose}
-                >
-                  <Icon name="delete" size="sm" color={colors.text} />
-                </TouchableOpacity>
+                <Text style={styles.levelClassification}>
+                  {civilization.levels?.classification || 'grassland'}
+                </Text>
               </View>
             </View>
 
-            {/* Detailed Info */}
-            <View style={styles.infoSection}>
-              {/* Basic Info */}
-              <View style={styles.infoGroup}>
-                <Text style={styles.infoGroupTitle}>基本情報</Text>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>期限:</Text>
-                  <Text style={styles.infoValue}>{formatDate(civilization.deadline)}</Text>
+            {/* Latest History */}
+            <View style={styles.historySection}>
+              <Text style={styles.historyTitle}>最新の記録</Text>
+              {memoLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.loadingText}>読み込み中...</Text>
                 </View>
-
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>最終進捗:</Text>
-                  <Text style={styles.infoValue}>
-                    {formatRelativeTime(civilization.lastProgressAt)}
-                  </Text>
-                </View>
-
-                {civilization.purpose && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>目的:</Text>
-                    <Text style={styles.infoValue}>{civilization.purpose}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Level Information */}
-              <View style={styles.infoGroup}>
-                <Text style={styles.infoGroupTitle}>文明レベル</Text>
-                <View style={styles.levelContainer}>
-                  <View style={styles.levelItem}>
-                    <Text style={styles.levelLabel}>文化レベル</Text>
-                    <View style={styles.levelBar}>
-                      <View 
-                        style={[
-                          styles.levelBarFill, 
-                          { width: `${civilization.levels.culturalLevel}%` }
-                        ]} 
-                      />
-                    </View>
-                    <Text style={styles.levelValue}>{civilization.levels.culturalLevel}%</Text>
-                  </View>
-
-                  <View style={styles.levelItem}>
-                    <Text style={styles.levelLabel}>成長レベル</Text>
-                    <View style={styles.levelBar}>
-                      <View 
-                        style={[
-                          styles.levelBarFill, 
-                          { width: `${civilization.levels.growthLevel}%` }
-                        ]} 
-                      />
-                    </View>
-                    <Text style={styles.levelValue}>{civilization.levels.growthLevel}%</Text>
-                  </View>
-
-                  <View style={styles.levelItem}>
-                    <Text style={styles.levelLabel}>総合レベル</Text>
-                    <View style={styles.levelBar}>
-                      <View 
-                        style={[
-                          styles.levelBarFill, 
-                          { width: `${civilization.levels.totalLevel}%` }
-                        ]} 
-                      />
-                    </View>
-                    <Text style={styles.levelValue}>{civilization.levels.totalLevel}%</Text>
-                  </View>
-
-                  <View style={styles.classificationContainer}>
-                    <Text style={styles.classificationLabel}>分類:</Text>
-                    <View style={styles.classificationBadge}>
-                      <Text style={styles.classificationText}>
-                        {civilization.levels.classification === 'grassland' && '草原'}
-                        {civilization.levels.classification === 'village' && '村'}
-                        {civilization.levels.classification === 'town' && '町'}
-                        {civilization.levels.classification === 'city' && '都市'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              {/* Statistics */}
-              <View style={styles.infoGroup}>
-                <Text style={styles.infoGroupTitle}>統計情報</Text>
-                <View style={styles.statsContainer}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>進捗記録数</Text>
-                    <Text style={styles.statValue}>{progressLogs.length}回</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>作成日</Text>
-                    <Text style={styles.statValue}>
-                      {new Date(civilization.createdAt).toLocaleDateString('ja-JP')}
+              ) : latestMemo ? (
+                <View style={styles.latestMemoCard}>
+                  <View style={styles.memoHeader}>
+                    <Text style={styles.memoDate}>
+                      {formatDate(latestMemo.date)}
                     </Text>
                   </View>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statLabel}>更新日</Text>
-                    <Text style={styles.statValue}>
-                      {new Date(civilization.updatedAt).toLocaleDateString('ja-JP')}
-                    </Text>
-                  </View>
+                  <Text style={styles.memoText}>{latestMemo.memo}</Text>
                 </View>
-              </View>
+              ) : (
+                <View style={styles.emptyMemoCard}>
+                  <Icon name="civilizations" size="md" color={colors.textTertiary} />
+                  <Text style={styles.emptyMemoText}>まだ記録がありません</Text>
+                </View>
+              )}
             </View>
 
-            {/* Progress Logging Form */}
-            {showProgressForm && (
-              <View style={styles.progressFormSection}>
-                <Text style={styles.formLabel}>進捗メモ（任意）</Text>
-                <TextInput
-                  style={styles.noteInput}
-                  value={progressNote}
-                  onChangeText={setProgressNote}
-                  placeholder="進捗の詳細を記録..."
-                  multiline
-                  maxLength={300}
-                  placeholderTextColor={colors.textSecondary}
-                />
-                <View style={styles.formActions}>
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => {
-                      setShowProgressForm(false);
-                      setProgressNote('');
-                    }}
-                  >
-                    <Text style={styles.cancelButtonText}>キャンセル</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.buttonDisabled]}
-                    onPress={handleRecordProgress}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.saveButtonText}>保存</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Actions */}
+            {/* Action Button */}
             <View style={styles.actionSection}>
               <TouchableOpacity
-                style={[styles.progressButton, loading && styles.buttonDisabled]}
-                onPress={() => setShowProgressForm(true)}
+                style={styles.recordButton}
+                onPress={handleRecordProgress}
                 disabled={loading}
               >
-                <Icon name="progress" size="sm" color="#FFFFFF" style={styles.buttonIcon} />
-                <Text style={styles.progressButtonText}>進捗を記録</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.editButton} onPress={onClose}>
-                <Icon name="edit" size="sm" color={colors.text} style={styles.buttonIcon} />
-                <Text style={styles.editButtonText}>編集</Text>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Icon name="add" size="sm" color="#FFFFFF" />
+                    <Text style={styles.recordButtonText}>進捗を記録</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
-
-            {/* History Section - Only show when expanded */}
-            {isExpanded && (
-              <View style={styles.historySection}>
-                <Text style={styles.historyTitle}>進捗履歴</Text>
-                {logsLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.loadingText}>読み込み中...</Text>
-                  </View>
-                ) : progressLogs.length > 0 ? (
-                  <FlatList
-                    data={progressLogs}
-                    renderItem={renderProgressLogItem}
-                    keyExtractor={(item) => item.id}
-                    style={styles.logsList}
-                    showsVerticalScrollIndicator={false}
-                  />
-                ) : (
-                  <Text style={styles.emptyLogsText}>まだ進捗が記録されていません</Text>
-                )}
-              </View>
-            )}
-            </ScrollView>
           </Animated.View>
         </PanGestureHandler>
         
-        {/* Fixed Close Button - Always show */}
-        {showFixedCloseButton && (
-          <View style={styles.fixedCloseButtonContainer}>
-            <TouchableOpacity 
-              style={styles.fixedCloseButton}
-              onPress={onClose}
-            >
-              <Icon name="delete" size="md" color="#FFFFFF" />
-              <Text style={styles.fixedCloseButtonText}>閉じる</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+        <ProgressMemoModal
+          visible={progressMemoModalVisible}
+          onClose={() => setProgressMemoModalVisible(false)}
+          onSubmit={handleSubmitProgressMemo}
+          memo={editingMemo}
+          loading={memoModalLoading}
+          isEditMode={!!editingMemo}
+        />
+      </Animated.View>
     </Modal>
   );
 };
@@ -482,6 +296,7 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   overlayPressable: {
     position: 'absolute',
@@ -491,30 +306,11 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   container: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    minHeight: 200,
-    maxHeight: '50%',
-    backgroundColor: colors.modalBackground,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  containerExpanded: {
-    maxHeight: '95%',
-    minHeight: '80%',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.lg,
+    backgroundColor: colors.background,
+    borderTopLeftRadius: spacing.lg,
+    borderTopRightRadius: spacing.lg,
     paddingBottom: spacing.xl,
+    height: '70%',
   },
   handleBar: {
     width: 40,
@@ -522,318 +318,110 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: 'center',
+    marginTop: spacing.sm,
     marginBottom: spacing.md,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.lg,
-  },
-  headerLeft: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
-    gap: spacing.sm,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  name: {
-    ...typography.subheading,
-    color: colors.text,
-    flex: 1,
-  },
-  remainingDays: {
-    ...typography.caption,
-    fontWeight: '600',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 8,
-  },
-  closeButton: {
-    padding: spacing.xs,
-    borderRadius: 20,
-    backgroundColor: colors.background,
-  },
-  remainingDaysNormal: {
-    color: colors.text,
-    backgroundColor: colors.background,
-  },
-  remainingDaysUrgent: {
-    color: '#D97706', // amber-600
-    backgroundColor: '#FEF3C7', // amber-100
-  },
-  remainingDaysOverdue: {
-    color: '#DC2626', // red-600
-    backgroundColor: '#FEE2E2', // red-100
-  },
-  remainingDaysNeutral: {
-    color: colors.textSecondary,
-    backgroundColor: colors.background,
-  },
-  infoSection: {
+    paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
   },
-  infoGroup: {
+  civilizationName: {
+    ...typography.heading,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  levelSection: {
+    paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-  },
-  infoGroupTitle: {
-    ...typography.subheading,
-    color: colors.text,
-    marginBottom: spacing.md,
-    fontWeight: '600',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: spacing.sm,
-  },
-  infoLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    width: 100,
-  },
-  infoValue: {
-    ...typography.caption,
-    color: colors.text,
-    flex: 1,
-  },
-  levelContainer: {
-    gap: spacing.md,
-  },
-  levelItem: {
-    marginBottom: spacing.sm,
   },
   levelLabel: {
     ...typography.caption,
-    fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  levelBar: {
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: spacing.xs,
-  },
-  levelBarFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-  },
-  levelValue: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '600',
-    textAlign: 'right',
-  },
-  classificationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  classificationLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginRight: spacing.sm,
-  },
-  classificationBadge: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 12,
-  },
-  classificationText: {
-    ...typography.caption,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  statValue: {
-    ...typography.subheading,
-    color: colors.text,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  progressFormSection: {
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-  },
-  formLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.sm,
   },
-  noteInput: {
+  levelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  levelValue: {
+    ...typography.heading,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  levelClassification: {
     ...typography.body,
-    color: colors.text,
-    backgroundColor: colors.modalBackground,
-    borderRadius: 8,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  formActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'flex-end',
-  },
-  cancelButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: colors.background,
-  },
-  cancelButtonText: {
-    ...typography.button,
     color: colors.textSecondary,
-  },
-  saveButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-  },
-  saveButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
-  },
-  actionSection: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  progressButton: {
-    ...ui.button.primary,
-    flex: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  progressButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
-  },
-  editButton: {
-    ...ui.button.warning,
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  editButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
-  },
-  buttonIcon: {
-    marginRight: spacing.xs,
-  },
-  buttonDisabled: {
-    backgroundColor: colors.disabled,
-    opacity: 0.6,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  fixedCloseButtonContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-  },
-  fixedCloseButton: {
-    backgroundColor: colors.error,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  fixedCloseButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   historySection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
   },
   historyTitle: {
     ...typography.subheading,
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
+    paddingVertical: spacing.lg,
     gap: spacing.sm,
   },
   loadingText: {
     ...typography.caption,
     color: colors.textSecondary,
   },
-  logsList: {
-    maxHeight: 200,
+  latestMemoCard: {
+    ...ui.card,
+    padding: spacing.md,
   },
-  logItem: {
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  memoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
-  logDate: {
+  memoDate: {
     ...typography.caption,
-    fontWeight: '600',
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
   },
-  logNote: {
+  memoText: {
     ...typography.body,
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  emptyLogsText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  emptyMemoCard: {
+    ...ui.card,
     padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyMemoText: {
+    ...typography.body,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  actionSection: {
+    paddingHorizontal: spacing.lg,
+  },
+  recordButton: {
+    ...ui.button.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  recordButtonText: {
+    ...typography.subheading,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

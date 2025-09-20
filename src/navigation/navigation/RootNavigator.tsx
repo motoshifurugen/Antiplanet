@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from '../../screens/Home';
 import { CivilizationsScreen } from '../../screens/Civilizations';
 import { PlanetSettingsScreen } from '../../screens/PlanetSettings';
+import { HistoryScreen } from '../../screens/History';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { Icon } from '../../components/UI/Icon';
@@ -14,6 +15,7 @@ export type RootStackParamList = {
   Home: undefined;
   Civilizations: { selectedCivilizationId?: string } | undefined;
   PlanetSettings: undefined;
+  History: { selectedCivilizationId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,6 +70,16 @@ export const RootNavigator: React.FC = () => {
             title: '惑星設定',
             headerRight: () => (
               <Icon name="settings" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
+            ),
+          }}
+        />
+        <Stack.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{ 
+            title: '進捗履歴',
+            headerRight: () => (
+              <Icon name="history" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
             ),
           }}
         />

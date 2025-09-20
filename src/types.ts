@@ -53,6 +53,21 @@ export type ProgressLog = {
   note?: string; // optional memo for progress entry
 };
 
+/**
+ * Daily progress memo entry for civilization history tracking
+ */
+export type ProgressMemo = {
+  id: string;
+  civId: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  memo: string; // required memo (max 50 characters)
+  createdAt: number; // server timestamp in milliseconds
+  updatedAt: number; // server timestamp in milliseconds
+  levelBefore: number; // civilization level before this entry
+  levelAfter: number; // civilization level after this entry
+  levelChange: number; // level change amount (can be negative)
+};
+
 // Utility types for working with timestamps
 export type TimestampMillis = number;
 export type ISODateString = string;
@@ -63,3 +78,5 @@ export type UpdateCivilizationRequest = Partial<
   Pick<Civilization, 'name' | 'purpose' | 'deadline' | 'state'>
 >;
 export type CreateProgressLogRequest = Omit<ProgressLog, 'id' | 'createdAt'>;
+export type CreateProgressMemoRequest = Omit<ProgressMemo, 'id' | 'createdAt' | 'updatedAt' | 'levelBefore' | 'levelAfter' | 'levelChange'>;
+export type UpdateProgressMemoRequest = Pick<ProgressMemo, 'memo'>;

@@ -7,3 +7,4 @@ export * from './paths';
 export * from './planetGoalRepository';
 export * from './civilizationRepository';
 export * from './progressLogRepository';
+export * from './progressMemoRepository';
