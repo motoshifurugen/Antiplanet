@@ -30,9 +30,10 @@ export const Toast: React.FC<ToastProps> = ({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    console.log('Toast useEffect triggered:', { visible, message, type });
+    let timer: NodeJS.Timeout;
+    let fallbackTimer: NodeJS.Timeout;
+
     if (visible) {
-      console.log('Toast showing with rich animation');
       setIsVisible(true);
       
       // Rich entrance animation
@@ -56,9 +57,7 @@ export const Toast: React.FC<ToastProps> = ({
       ]).start();
 
       // Auto-hide after extended duration
-      const timer = setTimeout(() => {
-        console.log('Toast timer triggered - hiding with animation');
-        
+      timer = setTimeout(() => {
         // Rich exit animation
         Animated.parallel([
           Animated.timing(opacity, {
@@ -77,22 +76,16 @@ export const Toast: React.FC<ToastProps> = ({
             useNativeDriver: true,
           }),
         ]).start(() => {
-          console.log('Toast exit animation completed - calling onHide');
           setIsVisible(false);
           onHide();
         });
         
         // Fallback: Force hide after animation duration + buffer
-        const fallbackTimer = setTimeout(() => {
-          console.log('Toast fallback timer triggered - forcing hide');
+        fallbackTimer = setTimeout(() => {
           setIsVisible(false);
           onHide();
         }, duration + 1000); // 1 second buffer
-        
-        return () => clearTimeout(fallbackTimer);
       }, duration);
-
-      return () => clearTimeout(timer);
     } else {
       // Reset animation values when not visible
       opacity.setValue(0);
@@ -100,6 +93,12 @@ export const Toast: React.FC<ToastProps> = ({
       translateY.setValue(-30);
       setIsVisible(false);
     }
+
+    // Cleanup function
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
   }, [visible, opacity, scale, translateY, duration, onHide]);
 
   if (!visible || !isVisible) {
@@ -160,7 +159,7 @@ const styles = StyleSheet.create({
     left: spacing.md,
     right: spacing.md,
     zIndex: 99999,
-    elevation: 99999,
+    elevation: 8,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: spacing.md,
@@ -172,7 +171,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    elevation: 8,
   },
   message: {
     ...typography.body,
