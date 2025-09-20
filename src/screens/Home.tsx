@@ -56,6 +56,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [selectedCivilization, setSelectedCivilization] = useState<Civilization | null>(null);
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [progressLoading, setProgressLoading] = useState(false);
+  
   const [toast, setToast] = useState<ToastState>({
     visible: false,
     message: '',
@@ -216,19 +217,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleRecordProgress = async (civilization: Civilization) => {
-    setProgressLoading(true);
     try {
-      await logProgress(civilization.id);
-      showToast(strings.messages.progressLogged, 'success');
+      setProgressLoading(true);
       
-      // Update the scene markers after progress is recorded
-      if (scene) {
-        // Derive states again to get updated state
-        deriveCivStates();
-      }
+      // Log progress to update lastProgressAt timestamp
+      await logProgress(civilization.id);
+      
+      // Derive states to refresh the 3D scene with updated markers
+      await deriveCivStates();
+      
+      // Show success toast
+      showToast('進捗が記録されました！', 'success');
     } catch (error) {
       console.error('Failed to record progress:', error);
-      showToast(strings.messages.progressFailed, 'error');
+      showToast('進捗の記録に失敗しました', 'error');
     } finally {
       setProgressLoading(false);
     }
@@ -399,6 +401,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 <Text style={styles.headerTitle}>星のビジョン</Text>
               </TouchableOpacity>
               
+              <View style={styles.headerCenter}>
+                <TouchableOpacity 
+                  style={styles.headerCenterButton}
+                  onPress={() => navigation.navigate('History')}
+                >
+                  <Icon name="history" size="md" color={colors.primary} />
+                  <Text style={styles.headerTitle}>履歴</Text>
+                </TouchableOpacity>
+              </View>
+              
               <TouchableOpacity 
                 style={styles.headerRight}
                 onPress={() => navigation.navigate('Civilizations')}
@@ -412,7 +424,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
 
             {/* 3D Planet View with gesture handlers */}
-            <TapGestureHandler onGestureEvent={handleTapGestureEvent}>
+            <TapGestureHandler 
+              onHandlerStateChange={(event) => {
+                if (event.nativeEvent.state === State.END) {
+                  handleTapGestureEvent(event);
+                }
+              }}
+            >
               <PinchGestureHandler
                 onGestureEvent={handlePinchGestureEvent}
                 onHandlerStateChange={handlePinchStateChange}
@@ -596,10 +614,23 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerCenterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   headerTitle: {
     ...typography.subheading,

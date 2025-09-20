@@ -14,11 +14,14 @@ import { RootNavigator } from './src/navigation/navigation/RootNavigator';
 import { useAppStore } from './src/stores';
 import { colors } from './src/theme/colors';
 import { typography } from './src/theme/typography';
+import { Toast } from './src/components/UI/Toast';
 
 export default function App() {
-  const { initializeAuth, loadAll } = useAppStore(state => ({
+  const { initializeAuth, loadAll, toast, hideToast } = useAppStore(state => ({
     initializeAuth: state.initializeAuth,
     loadAll: state.loadAll,
+    toast: state.toast,
+    hideToast: state.hideToast,
   }));
 
   const [fontsLoaded] = useFonts({
@@ -57,6 +60,7 @@ export default function App() {
       <StatusBar style="light" />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <RootNavigator />
+        <Toast {...toast} onHide={hideToast} duration={3000} />
       </GestureHandlerRootView>
     </>
   );

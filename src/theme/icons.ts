@@ -26,6 +26,7 @@ import {
   TreePine,
   Building,
   Building2,
+  X,
   type LucideIcon,
 } from 'lucide-react-native';
 import { colors } from './colors';
@@ -57,6 +58,7 @@ export const icons = {
   delete: Trash2,
   save: CheckCircle,
   confirm: CheckCircle,
+  close: X,
   
   // Civilization states (legacy)
   uninitialized: Circle,

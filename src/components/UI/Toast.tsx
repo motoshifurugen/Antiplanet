@@ -1,12 +1,11 @@
-// Simple toast notification component
+// Rich toast notification component with smooth animations
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, StyleSheet, Animated } from 'react-native';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { ui } from '../../theme/ui';
-import { animations, createAnimation } from '../../theme/animations';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -23,24 +22,43 @@ export const Toast: React.FC<ToastProps> = ({
   type,
   visible,
   onHide,
-  duration = 3000,
+  duration = 3000, // Reduced duration to 3 seconds for better UX
 }) => {
   const [opacity] = useState(new Animated.Value(0));
   const [scale] = useState(new Animated.Value(0.8));
-  const [translateY] = useState(new Animated.Value(-20));
+  const [translateY] = useState(new Animated.Value(-30));
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
+    let fallbackTimer: NodeJS.Timeout;
+
     if (visible) {
-      // Entrance animation with growth effect
+      setIsVisible(true);
+      
+      // Rich entrance animation
       Animated.parallel([
-        createAnimation('fadeIn', opacity),
-        createAnimation('growth', scale),
-        createAnimation('fadeIn', translateY),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
       ]).start();
 
-      // Auto-hide after duration
-      const timer = setTimeout(() => {
-        // Exit animation
+      // Auto-hide after extended duration
+      timer = setTimeout(() => {
+        // Rich exit animation
         Animated.parallel([
           Animated.timing(opacity, {
             toValue: 0,
@@ -53,20 +71,37 @@ export const Toast: React.FC<ToastProps> = ({
             useNativeDriver: true,
           }),
           Animated.timing(translateY, {
-            toValue: -20,
+            toValue: -30,
             duration: 300,
             useNativeDriver: true,
           }),
         ]).start(() => {
+          setIsVisible(false);
           onHide();
         });
+        
+        // Fallback: Force hide after animation duration + buffer
+        fallbackTimer = setTimeout(() => {
+          setIsVisible(false);
+          onHide();
+        }, duration + 1000); // 1 second buffer
       }, duration);
-
-      return () => clearTimeout(timer);
+    } else {
+      // Reset animation values when not visible
+      opacity.setValue(0);
+      scale.setValue(0.8);
+      translateY.setValue(-30);
+      setIsVisible(false);
     }
+
+    // Cleanup function
+    return () => {
+      if (timer) clearTimeout(timer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
   }, [visible, opacity, scale, translateY, duration, onHide]);
 
-  if (!visible) {
+  if (!visible || !isVisible) {
     return null;
   }
 
@@ -123,12 +158,24 @@ const styles = StyleSheet.create({
     top: 60,
     left: spacing.md,
     right: spacing.md,
-    zIndex: 1000,
-    elevation: 1000,
+    zIndex: 99999,
+    elevation: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: spacing.md,
+    backgroundColor: colors.primary,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   message: {
-    ...typography.caption,
+    ...typography.body,
     color: '#FFFFFF',
     textAlign: 'center',
+    fontWeight: '600',
   },
 });
