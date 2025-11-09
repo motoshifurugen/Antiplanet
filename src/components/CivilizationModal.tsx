@@ -346,7 +346,7 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
               <View style={styles.modalContentInner}>
                 <View style={styles.header}>
                   <Text style={styles.title}>
-                    {civilization ? 'Civilizationを編集' : 'Civilizationを追加'}
+                    {civilization ? '挑戦を編集' : '挑戦を追加'}
                   </Text>
                   <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                     <Icon name="edit" size="sm" color={colors.primary} style={styles.closeButtonIcon} />
@@ -361,7 +361,7 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
                       style={[styles.input, errors.name && styles.inputError]}
                       value={name}
                       onChangeText={setName}
-                      placeholder="Civilizationのタイトルを入力"
+                      placeholder="タイトルを入力"
                       placeholderTextColor={colors.placeholder}
                       editable={!loading}
                     />

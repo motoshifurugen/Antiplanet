@@ -6,7 +6,7 @@ export const strings = {
   // イントロ画面（Step 0）
   intro: {
     title: 'ようこそ、Planitへ',
-    narrative: 'あなたがCivilizationを記録するたびに、\n星は呼吸し、文明は進化していく。\n\n偶然も、つまずきも、\nすべてが星の糧となり、\n少しずつ大地が広がり、\n灯りがともっていく。\n\nこれは、あなただけの物語を刻むアプリです。',
+    narrative: 'あなたが挑戦を記録するたびに、\n星は呼吸し、文明は進化していく。\n\n偶然も、つまずきも、\nすべてが星の糧となり、\n少しずつ大地が広がり、\n灯りがともっていく。\n\nこれは、あなただけの物語を刻むアプリです。',
     cta: 'はじめる',
   },
   
@@ -21,8 +21,8 @@ export const strings = {
   screens: {
     home: {
       title: 'Planit',
-      hintTitle: '最初のCivilizationを登録しましょう',
-      hintCta: 'Civilizationを追加',
+      hintTitle: '最初の文明を登録しましょう',
+      hintCta: '文明を追加',
     },
     planetSettings: {
       title: '星のビジョンを決める',
@@ -34,7 +34,7 @@ export const strings = {
     },
     civilizations: {
       title: '',
-      addButton: 'Civilizationを追加',
+      addButton: '文明を追加',
     },
   },
   
@@ -52,13 +52,13 @@ export const strings = {
   messages: {
     progressLogged: '成長ログを記録しました',
     progressFailed: '成長ログの記録に失敗しました',
-    civilizationCreated: 'Civilizationが正常に作成されました',
-    civilizationUpdated: 'Civilizationが正常に更新されました',
-    civilizationDeleted: 'Civilizationが正常に削除されました',
+    civilizationCreated: '正常に作成されました',
+    civilizationUpdated: '正常に更新されました',
+    civilizationDeleted: '正常に削除されました',
     planetGoalSaved: '星のビジョンが正常に保存されました',
     loading: {
       vision: '星のビジョンを読み込み中...',
-      civilizations: 'Civilizationを読み込み中...',
+      civilizations: '文明を読み込み中...',
     },
   },
   
@@ -99,20 +99,20 @@ export const strings = {
       ocean: '海洋',
     },
     fields: {
-      name: 'Civilization名',
+      name: 'タイトル',
       purpose: '目的',
       deadline: '期限',
       lastProgress: '最終成長ログ',
     },
     emptyState: {
       title: 'まだ登録がありません',
-      subtitle: 'まずは1つ追加しましょう。Civilizationを登録すると、成長ログを追跡できます。',
+      subtitle: 'まずは1つ追加しましょう。文明を登録すると、成長ログを追跡できます。',
     },
   },
   
   // 削除確認
   deleteConfirm: {
-    title: 'Civilizationを削除',
+    title: '文明を削除',
     message: 'この操作は元に戻せません。',
     confirm: '削除',
   },

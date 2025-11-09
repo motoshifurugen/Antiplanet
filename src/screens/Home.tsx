@@ -346,7 +346,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   { opacity: subtitleOpacity }
                 ]}
               >
-                Visionを保存すると、Civilization（最大10件）を登録できます。
+                星の目標を保存すると、文明（最大10件）を登録できます。
               </Animated.Text>
               
               <TouchableOpacity 
@@ -411,7 +411,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 { transform: [{ scale: titleScale }] }
               ]}
             >
-              Visionが待っています
+              あなたの星が待っています
             </Animated.Text>
             <Animated.Text 
               style={[
@@ -419,7 +419,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 { opacity: subtitleOpacity }
               ]}
             >
-              Visionは生命の準備ができています！最初のCivilizationを作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
+              あなたの星は生命の準備ができています！最初の文明を作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
             </Animated.Text>
           </View>
         ) : (
