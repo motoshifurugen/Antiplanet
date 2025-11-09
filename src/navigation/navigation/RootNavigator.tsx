@@ -34,7 +34,7 @@ export const RootNavigator: React.FC = () => {
           headerStyle: {
             backgroundColor: colors.surface,
           },
-          headerTintColor: colors.text,
+          headerTintColor: colors.primary,
           headerTitleStyle: {
             ...typography.subheading,
             color: colors.text,
@@ -46,41 +46,29 @@ export const RootNavigator: React.FC = () => {
           name="Home" 
           component={HomeScreen} 
           options={{ 
-            title: '惑星ビュー',
-            headerShown: !isTutorial,
-            headerRight: isTutorial ? undefined : () => (
-              <Icon name="planet" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
-            ),
+            title: 'My Planet',
+            headerShown: !isTutorial
           }} 
         />
         <Stack.Screen
           name="Civilizations"
           component={CivilizationsScreen}
           options={{ 
-            title: '文明',
-            headerRight: () => (
-              <Icon name="civilizations" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
-            ),
+            title: 'Civilizations',
           }}
         />
         <Stack.Screen
           name="PlanetSettings"
           component={PlanetSettingsScreen}
           options={{ 
-            title: '惑星設定',
-            headerRight: () => (
-              <Icon name="settings" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
-            ),
+            title: 'Vision',
           }}
         />
         <Stack.Screen
           name="History"
           component={HistoryScreen}
           options={{ 
-            title: '進捗履歴',
-            headerRight: () => (
-              <Icon name="history" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
-            ),
+            title: 'History',
           }}
         />
       </Stack.Navigator>

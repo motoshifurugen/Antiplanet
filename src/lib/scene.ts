@@ -9,8 +9,8 @@ import { initializeAnimation } from './animation';
 
 // Camera constants
 const CAMERA_MIN_DISTANCE = 2.0;
-const CAMERA_MAX_DISTANCE = 5.0;
-const CAMERA_INITIAL_DISTANCE = 3.5;
+const CAMERA_MAX_DISTANCE = 7.0;
+const CAMERA_INITIAL_DISTANCE = 5.0;
 
 /**
  * Create and initialize 3D planet scene
@@ -21,17 +21,22 @@ export const createPlanetScene = (gl: ExpoWebGLRenderingContext): PlanetScene =>
   scene.background = new THREE.Color(0x1a1a2e); // Slightly brighter space background
 
   // Camera setup
+  // Use safe default aspect ratio (1:1) - will be updated on resize
+  // Don't use gl.drawingBufferWidth/Height here as they may not match onLayout dimensions
   const camera = new THREE.PerspectiveCamera(
     30, // FOV (even further reduced to prevent vertical distortion)
-    gl.drawingBufferWidth / gl.drawingBufferHeight, // aspect ratio
+    1.0, // Default aspect ratio - will be updated by resizeScene
     0.1, // near
     100 // far
   );
   camera.position.set(0, 0, CAMERA_INITIAL_DISTANCE);
+  camera.lookAt(0, 0, 0); // Ensure camera looks at the center
 
   // Renderer setup with PBR configuration
   const renderer = new Renderer({ gl });
-  renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
+  // Don't set size here - wait for onLayout to provide correct dimensions
+  // Set a minimal size to avoid errors, will be updated by resizeScene
+  renderer.setSize(1, 1);
   renderer.shadowMap.enabled = false; // Keep performance simple
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -110,10 +115,44 @@ export const resizeScene = (
   width: number,
   height: number
 ): void => {
-  const aspectRatio = width / height;
+  if (width <= 0 || height <= 0) {
+    console.warn('Invalid resize dimensions:', { width, height });
+    return;
+  }
+  
+  // Get GL context to access drawing buffer dimensions
+  const gl = scene.renderer.getContext() as ExpoWebGLRenderingContext;
+  
+  // Use physical pixel dimensions for both renderer and camera
+  // This ensures aspect ratio matches the actual rendering buffer
+  const physicalWidth = gl ? gl.drawingBufferWidth : width;
+  const physicalHeight = gl ? gl.drawingBufferHeight : height;
+  const aspectRatio = physicalWidth / physicalHeight;
+  
+  // Update camera aspect ratio using physical pixel dimensions
   scene.camera.aspect = aspectRatio;
   scene.camera.updateProjectionMatrix();
-  scene.renderer.setSize(width, height);
+  
+  // Set renderer size to match physical pixel dimensions
+  scene.renderer.setSize(physicalWidth, physicalHeight, false);
+  
+  // Set viewport to cover entire drawing buffer (must match renderer size)
+  if (gl) {
+    gl.viewport(0, 0, physicalWidth, physicalHeight);
+  }
+  
+  console.log('Resized scene:', { 
+    logicalSize: { width, height },
+    physicalSize: { width: physicalWidth, height: physicalHeight },
+    aspectRatio,
+    rendererSize: { 
+      width: scene.renderer.getSize(new THREE.Vector2()).x,
+      height: scene.renderer.getSize(new THREE.Vector2()).y
+    }
+  });
+  
+  // Ensure camera still looks at center after resize
+  scene.camera.lookAt(0, 0, 0);
 };
 
 /**
@@ -133,23 +172,27 @@ export const detectMarkerHit = (
   // Update raycaster with improved settings
   scene.raycaster.setFromCamera(scene.pointer, scene.camera);
   
-  // Increase raycast precision by setting a threshold
-  scene.raycaster.params.Points.threshold = 0.1; // Increase threshold for better hit detection
-
   // Get all markers as array
   const markers = Array.from(scene.markers.values());
   
-  // Perform raycast with recursive search for child objects
+  // Perform raycast with recursive search for child objects (hit areas)
+  // Recursive search ensures we detect both the marker mesh and its hit area child
   const intersects = scene.raycaster.intersectObjects(markers, true); // true = recursive
   
   if (intersects.length > 0) {
     const hitObject = intersects[0].object;
     let civilizationId: string | null = null;
     
+    // First check if the hit object itself has a civilization ID (hit area)
+    if (hitObject.userData.civilizationId) {
+      civilizationId = hitObject.userData.civilizationId as string;
+    }
     // If hit object is a child (hit area), get civilization ID from parent
-    if (hitObject.parent && hitObject.parent.userData.civilizationId) {
+    else if (hitObject.parent && hitObject.parent.userData.civilizationId) {
       civilizationId = hitObject.parent.userData.civilizationId as string;
-    } else if (hitObject.userData.civilizationId) {
+    }
+    // If hit object is the marker itself, get ID from its userData
+    else if (hitObject.userData && hitObject.userData.civilizationId) {
       civilizationId = hitObject.userData.civilizationId as string;
     }
     
@@ -165,6 +208,13 @@ export const detectMarkerHit = (
  * Render scene (call only when needed)
  */
 export const renderScene = (scene: PlanetScene): void => {
+  // Ensure viewport is set before rendering
+  const gl = scene.renderer.getContext() as ExpoWebGLRenderingContext;
+  if (gl) {
+    // Use physical pixel dimensions from drawing buffer
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  }
+  
   scene.renderer.render(scene.scene, scene.camera);
   // Use type assertion for expo-gl specific method
   (scene.renderer.getContext() as any).endFrameEXP();

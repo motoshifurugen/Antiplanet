@@ -361,7 +361,7 @@ export const CivilizationModal: React.FC<CivilizationModalProps> = ({
                       style={[styles.input, errors.name && styles.inputError]}
                       value={name}
                       onChangeText={setName}
-                      placeholder="挑戦のタイトルを入力"
+                      placeholder="タイトルを入力"
                       placeholderTextColor={colors.placeholder}
                       editable={!loading}
                     />
