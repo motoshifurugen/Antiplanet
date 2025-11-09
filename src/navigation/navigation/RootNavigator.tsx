@@ -46,7 +46,7 @@ export const RootNavigator: React.FC = () => {
           name="Home" 
           component={HomeScreen} 
           options={{ 
-            title: 'Planit',
+            title: 'My Planet',
             headerShown: !isTutorial
           }} 
         />
@@ -62,9 +62,6 @@ export const RootNavigator: React.FC = () => {
           component={PlanetSettingsScreen}
           options={{ 
             title: 'Vision',
-            headerRight: () => (
-              <Icon name="planet" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
-            ),
           }}
         />
         <Stack.Screen
@@ -72,9 +69,6 @@ export const RootNavigator: React.FC = () => {
           component={HistoryScreen}
           options={{ 
             title: 'History',
-            headerRight: () => (
-              <Icon name="history" size="sm" color={colors.text} style={{ marginRight: spacing.md }} />
-            ),
           }}
         />
       </Stack.Navigator>
