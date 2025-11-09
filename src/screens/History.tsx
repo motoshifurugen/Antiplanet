@@ -242,12 +242,6 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   return (
     <Screen>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>進捗履歴</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-            <Icon name="refresh" size="sm" color={colors.primary} />
-          </TouchableOpacity>
-        </View>
 
         <FlatList
           ref={flatListRef}

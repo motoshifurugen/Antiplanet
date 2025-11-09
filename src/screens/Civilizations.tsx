@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -43,7 +43,7 @@ interface ToastState {
 }
 
 export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
-  navigation: _navigation,
+  navigation,
 }) => {
   const route = useRoute();
   const flatListRef = useRef<FlatList>(null);
@@ -107,6 +107,20 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     }, [deriveCivStates])
   );
 
+  // Set header right button with add icon
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          style={styles.headerAddButton}
+          onPress={handleAddCivilization}
+        >
+          <Icon name="add" size="sm" color="#FFFFFF" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, handleAddCivilization]);
+
   const showToast = (message: string, type: ToastType = 'info') => {
     setToast({ visible: true, message, type });
   };
@@ -125,10 +139,10 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     }
   };
 
-  const handleAddCivilization = () => {
+  const handleAddCivilization = useCallback(() => {
     setEditingCivilization(undefined);
     setModalVisible(true);
-  };
+  }, []);
 
   const handleEditCivilization = (civilization: Civilization) => {
     setEditingCivilization(civilization);
@@ -153,7 +167,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
       showToast(
         editingCivilization
           ? '変更を保存できませんでした。接続を確認して再試行してください。'
-          : '挑戦を作成できませんでした。接続を確認して再試行してください。',
+          : 'Civilizationを作成できませんでした。接続を確認して再試行してください。',
         'error'
       );
       throw error; // Re-throw to prevent modal from closing
@@ -177,7 +191,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
               showToast(strings.messages.civilizationDeleted, 'success');
             } catch (error) {
               console.error('Failed to delete civilization:', error);
-              showToast('挑戦を削除できませんでした。接続を確認して再試行してください。', 'error');
+              showToast('Civilizationを削除できませんでした。接続を確認して再試行してください。', 'error');
             }
           },
         },
@@ -245,8 +259,20 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
     }
   };
 
+  // Check if civilization has no progress today
+  const hasNoProgressToday = (civilization: Civilization): boolean => {
+    if (!civilization.lastProgressAt) {
+      return true; // No progress recorded at all
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStart = today.getTime();
+    return civilization.lastProgressAt < todayStart; // Progress was before today
+  };
+
   const renderCivilization = ({ item }: { item: Civilization }) => {
     const isSelected = item.id === selectedCivilizationId;
+    const noProgressToday = hasNoProgressToday(item);
     
     return (
       <View style={[styles.civilizationCard, isSelected && styles.selectedCivilizationCard]}>
@@ -271,6 +297,7 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.progressButton} onPress={() => handleProgressMemo(item)}>
             <Text style={styles.progressButtonText}>進捗メモ</Text>
+            {noProgressToday && <View style={styles.progressBadgeDot} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -304,14 +331,6 @@ export const CivilizationsScreen: React.FC<CivilizationsScreenProps> = ({
   return (
     <Screen>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{strings.screens.civilizations.title}</Text>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddCivilization}>
-            <Icon name="add" size="sm" color="#FFFFFF" style={styles.addButtonIcon} />
-            <Text style={styles.addButtonText}>{strings.screens.civilizations.addButton}</Text>
-          </TouchableOpacity>
-        </View>
-
         <FlatList
           ref={flatListRef}
           data={civilizations}
@@ -361,32 +380,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    ...ui.card,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  title: {
-    ...typography.heading,
-    color: colors.text,
-  },
-  addButton: {
+  headerAddButton: {
     ...ui.button.success,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    padding: 0,
+    marginRight: spacing.md,
     alignItems: 'center',
-    gap: spacing.xs,
-  },
-  addButtonIcon: {
-    marginRight: spacing.xs,
-  },
-  addButtonText: {
-    ...typography.caption,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    justifyContent: 'center',
   },
   listContainer: {
     paddingBottom: spacing.lg,
@@ -445,12 +447,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     alignItems: 'center',
+    position: 'relative',
   },
   progressButtonText: {
     ...typography.subheading,
     color: '#FFFFFF',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  progressBadgeDot: {
+    position: 'absolute',
+    top: -spacing.xs,
+    right: -spacing.xs,
+    backgroundColor: colors.error,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   emptyState: {
     flex: 1,

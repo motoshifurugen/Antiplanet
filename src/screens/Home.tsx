@@ -52,6 +52,20 @@ interface ToastState {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { civilizations, planetGoal, logProgress, deriveCivStates } = useAppStore();
   
+  // Calculate count of civilizations without progress today
+  const getNoProgressTodayCount = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStart = today.getTime();
+    
+    return civilizations.filter(civ => {
+      if (!civ.lastProgressAt) {
+        return true; // No progress recorded at all
+      }
+      return civ.lastProgressAt < todayStart; // Progress was before today
+    }).length;
+  };
+  
   const [scene, setScene] = useState<PlanetScene | null>(null);
   const [selectedCivilization, setSelectedCivilization] = useState<Civilization | null>(null);
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
@@ -439,7 +453,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   <Text style={styles.headerLabel}>Civilization</Text>
                 </View>
                 <View style={styles.civilizationCount}>
-                  <Text style={styles.countText}>{civilizations.length}</Text>
+                  <Text style={styles.countText}>{getNoProgressTodayCount()}</Text>
                 </View>
               </TouchableOpacity>
             </View>
@@ -661,15 +675,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerRight: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    position: 'relative',
   },
   headerRightContent: {
     flexDirection: 'column',
     alignItems: 'center',
-    marginRight: spacing.xs,
   },
   headerLabel: {
     ...typography.caption,
@@ -678,12 +692,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   civilizationCount: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    alignSelf: 'flex-start',
-    marginTop: -spacing.xs,
+    position: 'absolute',
+    top: -spacing.xs,
+    right: '40%',
+    marginRight: -spacing.md,
+    backgroundColor: colors.error,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 0,
   },
   countText: {
     ...typography.caption,
