@@ -266,7 +266,9 @@ export const createCivilizationMarker = (
   marker.position.copy(position);
   
   // Add invisible bounding box for better hit detection
-  const boundingBox = new THREE.BoxGeometry(baseRadius * 2, baseRadius * 2, baseRadius * 2);
+  // Use larger hit area (5x base radius) to ensure clicks work even when zoomed out
+  const hitAreaSize = baseRadius * 5;
+  const boundingBox = new THREE.BoxGeometry(hitAreaSize, hitAreaSize, hitAreaSize);
   const invisibleMaterial = new THREE.MeshBasicMaterial({ 
     visible: false, 
     transparent: true, 
@@ -274,6 +276,9 @@ export const createCivilizationMarker = (
   });
   const hitArea = new THREE.Mesh(boundingBox, invisibleMaterial);
   hitArea.position.copy(position);
+  
+  // Store civilization ID in hit area for easier detection
+  hitArea.userData.civilizationId = civilization.id;
   
   // Add hit area to marker for better detection
   marker.add(hitArea);

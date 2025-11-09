@@ -204,7 +204,7 @@ export const rotatePlanet = (
  */
 export const zoomPlanet = (scene: PlanetScene, scale: number): void => {
   const CAMERA_MIN_DISTANCE = 2.0;
-  const CAMERA_MAX_DISTANCE = 5.0;
+  const CAMERA_MAX_DISTANCE = 7.0;
   
   const distance = scene.camera.position.length();
   const newDistance = Math.max(

@@ -77,6 +77,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   // Refs for gesture handling
   const lastPanRef = useRef({ x: 0, y: 0 });
   const lastScaleRef = useRef(1);
+  const animationStartedRef = useRef(false);
 
   // Derive states when screen comes into focus
   useFocusEffect(
@@ -117,6 +118,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   }, [scene, civilizations]);
 
+  // Update camera aspect ratio when view dimensions change
+  useEffect(() => {
+    if (scene && viewDimensions.width > 0 && viewDimensions.height > 0) {
+      // Force immediate resize and render
+      resizeScene(scene, viewDimensions.width, viewDimensions.height);
+      
+      // Render immediately after resize
+      requestAnimationFrame(() => {
+        renderScene(scene);
+      });
+      
+      // Start idle animation after first resize (only once)
+      if (!animationStartedRef.current) {
+        animationStartedRef.current = true;
+        setTimeout(() => {
+          startIdleAnimation(scene);
+        }, 1000);
+      }
+    }
+  }, [scene, viewDimensions.width, viewDimensions.height]);
+
   const showToast = (message: string, type: ToastType = 'info') => {
     setToast({ visible: true, message, type });
   };
@@ -130,13 +152,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       const newScene = createPlanetScene(gl);
       setScene(newScene);
       
-      // Start idle animation after a delay
-      setTimeout(() => {
-        startIdleAnimation(newScene);
-      }, 1000);
-      
-      // Initial render
-      renderScene(newScene);
+      // Don't render immediately - wait for onLayout to set correct dimensions
+      // This ensures the renderer size matches the actual view size
     } catch (error) {
       console.error('Failed to create 3D scene:', error);
       showToast('3D惑星ビューを読み込めませんでした。アプリを再起動してください。', 'error');
@@ -144,10 +161,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleResize = (width: number, height: number) => {
-    setViewDimensions({ width, height });
-    if (scene) {
-      resizeScene(scene, width, height);
-      renderScene(scene);
+    if (width > 0 && height > 0) {
+      setViewDimensions({ width, height });
+      if (scene) {
+        resizeScene(scene, width, height);
+        renderScene(scene);
+      }
     }
   };
 
@@ -313,7 +332,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   { opacity: subtitleOpacity }
                 ]}
               >
-                星のビジョンを保存すると、挑戦（最大10件）を登録できます。
+                Visionを保存すると、Civilization（最大10件）を登録できます。
               </Animated.Text>
               
               <TouchableOpacity 
@@ -378,7 +397,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 { transform: [{ scale: titleScale }] }
               ]}
             >
-              星のビジョンが待っています
+              Visionが待っています
             </Animated.Text>
             <Animated.Text 
               style={[
@@ -386,7 +405,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 { opacity: subtitleOpacity }
               ]}
             >
-              星のビジョンは生命の準備ができています！最初の挑戦を作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
+              Visionは生命の準備ができています！最初のCivilizationを作成すると、表面に光るマーカーとして表示されます。回転やズームで世界を探索できます。
             </Animated.Text>
           </View>
         ) : (
@@ -398,7 +417,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 onPress={() => navigation.navigate('PlanetSettings')}
               >
                 <Icon name="planet" size="md" color={colors.primary} />
-                <Text style={styles.headerTitle}>星のビジョン</Text>
+                <Text style={styles.headerLabel}>Vision</Text>
               </TouchableOpacity>
               
               <View style={styles.headerCenter}>
@@ -407,7 +426,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   onPress={() => navigation.navigate('History')}
                 >
                   <Icon name="history" size="md" color={colors.primary} />
-                  <Text style={styles.headerTitle}>履歴</Text>
+                  <Text style={styles.headerLabel}>History</Text>
                 </TouchableOpacity>
               </View>
               
@@ -415,8 +434,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 style={styles.headerRight}
                 onPress={() => navigation.navigate('Civilizations')}
               >
-                <Icon name="civilizations" size="md" color={colors.primary} />
-                <Text style={styles.headerTitle}>挑戦</Text>
+                <View style={styles.headerRightContent}>
+                  <Icon name="civilizations" size="md" color={colors.primary} />
+                  <Text style={styles.headerLabel}>Civilization</Text>
+                </View>
                 <View style={styles.civilizationCount}>
                   <Text style={styles.countText}>{civilizations.length}</Text>
                 </View>
@@ -424,32 +445,35 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             </View>
 
             {/* 3D Planet View with gesture handlers */}
-            <TapGestureHandler 
-              onHandlerStateChange={(event) => {
-                if (event.nativeEvent.state === State.END) {
-                  handleTapGestureEvent(event);
-                }
-              }}
-            >
-              <PinchGestureHandler
-                onGestureEvent={handlePinchGestureEvent}
-                onHandlerStateChange={handlePinchStateChange}
+            <View style={styles.glViewContainer}>
+              <TapGestureHandler 
+                onHandlerStateChange={(event) => {
+                  if (event.nativeEvent.state === State.END) {
+                    handleTapGestureEvent(event);
+                  }
+                }}
               >
-                <PanGestureHandler
-                  onGestureEvent={handlePanGestureEvent}
-                  onHandlerStateChange={handlePanStateChange}
+                <PinchGestureHandler
+                  onGestureEvent={handlePinchGestureEvent}
+                  onHandlerStateChange={handlePinchStateChange}
                 >
-                  <GLView
-                    style={styles.glView}
-                    onContextCreate={handleContextCreate}
-                    onLayout={(event) => {
-                      const { width, height } = event.nativeEvent.layout;
-                      handleResize(width, height);
-                    }}
-                  />
-                </PanGestureHandler>
-              </PinchGestureHandler>
-            </TapGestureHandler>
+                  <PanGestureHandler
+                    onGestureEvent={handlePanGestureEvent}
+                    onHandlerStateChange={handlePanStateChange}
+                  >
+                    <GLView
+                      style={styles.glView}
+                      onContextCreate={handleContextCreate}
+                      onLayout={(event) => {
+                        const { width, height, x, y } = event.nativeEvent.layout;
+                        console.log('GLView layout:', { width, height, x, y });
+                        handleResize(width, height);
+                      }}
+                    />
+                  </PanGestureHandler>
+                </PinchGestureHandler>
+              </TapGestureHandler>
+            </View>
           </View>
         )}
 
@@ -472,8 +496,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  glViewContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+  },
   glView: {
     flex: 1,
+    width: '100%',
+    height: '100%',
   },
   emptyState: {
     flex: 1,
@@ -599,6 +631,7 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
+    width: '100%',
     backgroundColor: colors.background,
   },
   header: {
@@ -606,13 +639,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    minHeight: 80,
     backgroundColor: colors.background,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   headerLeft: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     flex: 1,
   },
@@ -623,7 +657,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerCenterButton: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
   },
   headerRight: {
@@ -632,17 +666,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
-  headerTitle: {
-    ...typography.subheading,
+  headerRightContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginRight: spacing.xs,
+  },
+  headerLabel: {
+    ...typography.caption,
     color: colors.text,
-    marginLeft: spacing.sm,
+    marginTop: spacing.xs,
+    fontSize: 10,
   },
   civilizationCount: {
     backgroundColor: colors.primary,
     borderRadius: 12,
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
-    marginLeft: spacing.sm,
+    alignSelf: 'flex-start',
+    marginTop: -spacing.xs,
   },
   countText: {
     ...typography.caption,
